@@ -7,6 +7,7 @@ import 'package:flutter_v2ray/url/trojan.dart';
 import 'package:flutter_v2ray/url/url.dart';
 import 'package:flutter_v2ray/url/vless.dart';
 import 'package:flutter_v2ray/url/vmess.dart';
+import 'package:flutter_v2ray/url/custom_config.dart';
 
 import 'flutter_v2ray_platform_interface.dart';
 import 'model/v2ray_status.dart';
@@ -130,19 +131,25 @@ class FlutterV2ray {
   ///
   /// like vmess://, vless://, trojan://, ss://, socks://
   static V2RayURL parseFromURL(String url) {
-    switch (url.split("://")[0].toLowerCase()) {
-      case 'vmess':
-        return VmessURL(url: url);
-      case 'vless':
-        return VlessURL(url: url);
-      case 'trojan':
-        return TrojanURL(url: url);
-      case 'ss':
-        return ShadowSocksURL(url: url);
-      case 'socks':
-        return SocksURL(url: url);
-      default:
-        throw ArgumentError('url is invalid');
+    // Try parsing as JSON first for custom configs
+    try {
+      return CustomConfigURL(url: url);
+    } catch (_) {
+      // If not JSON, try parsing as URI
+      switch (url.split("://")[0].toLowerCase()) {
+        case 'vmess':
+          return VmessURL(url: url);
+        case 'vless':
+          return VlessURL(url: url);
+        case 'trojan':
+          return TrojanURL(url: url);
+        case 'ss':
+          return ShadowSocksURL(url: url);
+        case 'socks':
+          return SocksURL(url: url);
+        default:
+          throw ArgumentError('url is invalid');
+      }
     }
   }
 }
