@@ -36,7 +36,7 @@
 * add disconnect button (notificationDisconnectButtonName)
 * fix requestPermission
 * fix notification bugs  (android 13 and higher)
-* update v2ray core to v24.12.18
+* update v2ray core to  v24.11.11
 * add dns settings
 * add routing settings
 
@@ -54,7 +54,7 @@
 
 | Platform  | Status    | Info |
 | --------- | --------- | ---- |
-| Android   | Done ✅   | Xray 24.12.18 |
+| Android   | Done ✅   | Xray v24.11.11 |
 | IOS       | Done ✅   | For purchase: [t.me/blueboy_tm](https://t.me/blueboy_tm) |
 | Desktop   | Done ✅   | For purchase: [t.me/blueboy_tm](https://t.me/blueboy_tm) |
 
