@@ -86,13 +86,47 @@ abstract class V2RayURL {
   };
 
   Map<String, dynamic> dns = {
-    "servers": ["8.8.8.8", "8.8.4.4"]
+    "hosts": {
+      "domain:googleapis.com": "googleapis.com",
+      "domain:google.com": ["8.8.8.8", "8.8.4.4"]
+    },
+    "servers": [
+      {
+        "address": "https://dns.google/dns-query",
+        "domains": ["geosite:google"],
+        "skipFallback": true,
+        "queryStrategy": "UseIPv4"
+      },
+      "8.8.8.8",
+      "8.8.4.4"
+    ],
+    "queryStrategy": "UseIPv4",
+    "disableCache": false
   };
 
   Map<String, dynamic> routing = {
-    "domainStrategy": "UseIp",
-    "domainMatcher": null,
-    "rules": [],
+    "domainStrategy": "IPIfNonMatch",
+    "domainMatcher": "hybrid",
+    "rules": [
+      {
+        "type": "field",
+        "domain": ["geosite:ir"],
+        "outboundTag": "direct"
+      },
+      {
+        "type": "field",
+        "ip": ["geoip:ir"],
+        "outboundTag": "direct"
+      },
+      {
+        "outboundTag": "direct",
+        "ip": [
+          "geoip:ir",
+          "geoip:private"
+        ],
+        "type": "field"
+      }
+    ],
     "balancers": []
   };
 
