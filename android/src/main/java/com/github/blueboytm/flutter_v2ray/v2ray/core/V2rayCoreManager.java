@@ -172,8 +172,15 @@ public final class V2rayCoreManager {
     public void setUpListener(Service targetService) {
         try {
             v2rayServicesListener = (V2rayServicesListener) targetService;
-            copyAssets(targetService.getApplicationContext());
-            Libv2ray.initV2Env(getUserAssetsPath(targetService.getApplicationContext()), "");
+            Context context = targetService.getApplicationContext();
+            String dataDir = context.getApplicationInfo().dataDir;
+            
+            // Copy assets first
+            copyAssets(context);
+            
+            // Initialize with the correct data directory path
+            Libv2ray.initV2Env(dataDir, "");  // Changed from getUserAssetsPath to dataDir
+            
             isLibV2rayCoreInitialized = true;
             SERVICE_DURATION = "00:00:00";
             seconds = 0;
@@ -358,17 +365,21 @@ public final class V2rayCoreManager {
 
     public Long getV2rayServerDelay(final String config, final String url) {
         try {
-            try {
-                JSONObject config_json = new JSONObject(config);
-                JSONObject new_routing_json = config_json.getJSONObject("routing");
-                new_routing_json.remove("rules");
-                config_json.remove("routing");
-                config_json.put("routing", new_routing_json);
-                return Libv2ray.measureOutboundDelay(config_json.toString(), url);
-            } catch (Exception json_error) {
-                Log.e("getV2rayServerDelay", json_error.toString());
-                return Libv2ray.measureOutboundDelay(config, url);
+            JSONObject config_json = new JSONObject(config);
+            
+            // Remove DNS settings that use geosite
+            if (config_json.has("dns")) {
+                config_json.remove("dns");
             }
+            
+            // Remove routing rules that use geosite/geoip
+            if (config_json.has("routing")) {
+                JSONObject routing = config_json.getJSONObject("routing");
+                routing.remove("rules");
+                config_json.put("routing", routing);
+            }
+            
+            return Libv2ray.measureOutboundDelay(config_json.toString(), url);
         } catch (Exception e) {
             Log.e("getV2rayServerDelayCore", e.toString());
             return -1L;
