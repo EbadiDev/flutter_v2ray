@@ -109,6 +109,7 @@ public class FlutterV2rayPlugin implements FlutterPlugin, ActivityAware, PluginR
                         }
                     });
                     break;
+                    
                 case "getConnectedServerDelay":
                     executor.submit(() -> {
                         try {
@@ -119,6 +120,60 @@ public class FlutterV2rayPlugin implements FlutterPlugin, ActivityAware, PluginR
                         }
                     });
                     break;
+                
+                    case "getAllServerDelay":
+                    String res = call.argument("configs");
+                    List<String> configs = new Gson().fromJson(res, List.class);
+
+                    ConcurrentHashMap<String, Long> realPings = new ConcurrentHashMap<>();
+
+                    CountDownLatch latch = new CountDownLatch(configs.size());
+
+                    for (String config : configs) {
+                        new Thread(new Runnable() {
+                            @Override
+                            public void run() {
+                                try {
+                                    // Simulate the ping operation
+                                    Long result = V2rayController.getV2rayServerDelay(config, "");
+                                    Map<String, Long> myMap = new HashMap<>();
+                                    myMap.put(config, result);
+//                                    android.util.Log.d("Plugin", "test ping: " + myMap);
+
+                                    if (result != null) {
+                                        realPings.put(config, result);
+                                    }
+                                } finally {
+                                    // Decrement the latch count when the thread finishes
+                                    latch.countDown();
+                                }
+                            }
+                        }).start();
+                    }
+
+                    new Thread(new Runnable() {
+                        @Override
+                        public void run() {
+                            try {
+                                // Wait for all threads to finish
+                                latch.await();
+
+                                // Run on UI thread to return the result
+                                activity.runOnUiThread(new Runnable() {
+                                    @Override
+                                    public void run() {
+//                                        android.util.Log.d("Plugin", "Final pings: " + realPings);
+                                        result.success(new Gson().toJson(realPings));
+                                    }
+                                });
+                            } catch (InterruptedException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    }).start();
+
+                    break;
+
                 case "getCoreVersion":
                     result.success(V2rayController.getCoreVersion());
                     break;

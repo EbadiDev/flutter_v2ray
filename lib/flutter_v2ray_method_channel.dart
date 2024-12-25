@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'model/v2ray_status.dart' show V2RayStatus;
-
+import 'dart:convert';
 import 'flutter_v2ray_platform_interface.dart';
 
 /// An implementation of [FlutterV2rayPlatform] that uses method channels.
@@ -54,6 +54,14 @@ class MethodChannelFlutterV2ray extends FlutterV2rayPlatform {
       "bypass_subnets": bypassSubnets,
       "proxy_only": proxyOnly,
       "notificationDisconnectButtonName": notificationDisconnectButtonName,
+    });
+  }
+
+  @override
+  Future<dynamic> getAllServerDelay({required List<String> configs}) {
+    final res = jsonEncode(configs);
+    return methodChannel.invokeMethod('getAllServerDelay', {
+      "configs": res,
     });
   }
 

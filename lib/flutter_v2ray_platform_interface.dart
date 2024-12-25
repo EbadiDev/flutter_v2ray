@@ -47,6 +47,10 @@ abstract class FlutterV2rayPlatform extends PlatformInterface {
     throw UnimplementedError('startV2Ray() has not been implemented.');
   }
 
+  Future<dynamic> getAllServerDelay({required List<String> configs}) {
+    throw UnimplementedError('getAllServerDelay() has not been implemented.');
+  }
+
   Future<void> stopV2Ray() {
     throw UnimplementedError('stopV2Ray() has not been implemented.');
   }
