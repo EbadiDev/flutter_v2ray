@@ -33,6 +33,10 @@ import libv2ray.Libv2ray;
 import libv2ray.V2RayPoint;
 import libv2ray.V2RayVPNServiceSupportsSet;
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.InputStream;
+
 public final class V2rayCoreManager {
     private static final int NOTIFICATION_ID = 1;
     private volatile static V2rayCoreManager INSTANCE;
@@ -143,9 +147,32 @@ public final class V2rayCoreManager {
         }.start();
     }
 
+    private void copyAssets(Context context) {
+        try {
+            String[] files = {"geoip.dat", "geosite.dat"};
+            for (String file : files) {
+                String destPath = context.getApplicationInfo().dataDir + "/" + file;
+                if (!new File(destPath).exists()) {
+                    InputStream is = context.getAssets().open(file);
+                    FileOutputStream fos = new FileOutputStream(destPath);
+                    byte[] buffer = new byte[1024];
+                    int count;
+                    while ((count = is.read(buffer)) > 0) {
+                        fos.write(buffer, 0, count);
+                    }
+                    fos.close();
+                    is.close();
+                }
+            }
+        } catch (Exception e) {
+            Log.e(V2rayCoreManager.class.getSimpleName(), "copyAssets failed => ", e);
+        }
+    }
+
     public void setUpListener(Service targetService) {
         try {
             v2rayServicesListener = (V2rayServicesListener) targetService;
+            copyAssets(targetService.getApplicationContext());
             Libv2ray.initV2Env(getUserAssetsPath(targetService.getApplicationContext()), "");
             isLibV2rayCoreInitialized = true;
             SERVICE_DURATION = "00:00:00";
