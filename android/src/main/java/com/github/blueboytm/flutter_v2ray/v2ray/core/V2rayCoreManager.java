@@ -211,7 +211,6 @@ public final class V2rayCoreManager {
         }
         try {
             String assetsPath = getUserAssetsPath(v2rayServicesListener.getService().getApplicationContext());
-            v2RayPoint.setAssetsPath(assetsPath);
             v2RayPoint.setConfigureFileContent(v2rayConfig.V2RAY_FULL_JSON_CONFIG);
             v2RayPoint.setDomainName(v2rayConfig.CONNECTED_V2RAY_SERVER_ADDRESS + ":" + v2rayConfig.CONNECTED_V2RAY_SERVER_PORT);
             v2RayPoint.runLoop(false);
