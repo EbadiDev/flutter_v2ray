@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:developer' as developer;
 
 import 'package:flutter_v2ray/url/shadowsocks.dart';
 import 'package:flutter_v2ray/url/socks.dart';
@@ -14,6 +15,17 @@ import 'model/v2ray_status.dart';
 
 export 'model/v2ray_status.dart';
 export 'url/url.dart';
+
+class V2RayInitializationException implements Exception {
+  final String message;
+  final dynamic originalError;
+
+  V2RayInitializationException(this.message, [this.originalError]);
+
+  @override
+  String toString() =>
+      'V2RayInitializationException: $message${originalError != null ? '\nOriginal error: $originalError' : ''}';
+}
 
 class FlutterV2ray {
   FlutterV2ray({required this.onStatusChanged});
@@ -39,6 +51,14 @@ class FlutterV2ray {
       notificationIconResourceType: notificationIconResourceType,
       notificationIconResourceName: notificationIconResourceName,
     );
+  }
+
+  Future<void> dispose() async {
+    try {
+      await stopV2Ray();
+    } catch (e) {
+      developer.log('Error during V2Ray disposal', error: e);
+    }
   }
 
   /// Start V2Ray service.
@@ -108,7 +128,7 @@ class FlutterV2ray {
   /// This method returns the real server delay of the configuration.
   Future<int> getServerDelay(
       {required String config,
-      String url = 'https://google.com/generate_204'}) async {
+      String url = 'http://google.com/generate_204'}) async {
     try {
       if (jsonDecode(config) == null) {
         throw ArgumentError('The provided string is not valid JSON');

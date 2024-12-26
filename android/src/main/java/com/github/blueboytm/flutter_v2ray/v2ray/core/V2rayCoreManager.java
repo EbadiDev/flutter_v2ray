@@ -148,39 +148,14 @@ public final class V2rayCoreManager {
         }.start();
     }
 
-    private void copyAssets(Context context) {
-        try {
-            String[] files = {"geoip.dat", "geosite.dat"};
-            for (String file : files) {
-                String destPath = context.getApplicationInfo().dataDir + "/" + file;
-                if (!new File(destPath).exists()) {
-                    InputStream is = context.getAssets().open(file);
-                    FileOutputStream fos = new FileOutputStream(destPath);
-                    byte[] buffer = new byte[1024];
-                    int count;
-                    while ((count = is.read(buffer)) > 0) {
-                        fos.write(buffer, 0, count);
-                    }
-                    fos.close();
-                    is.close();
-                }
-            }
-        } catch (Exception e) {
-            Log.e(V2rayCoreManager.class.getSimpleName(), "copyAssets failed => ", e);
-        }
-    }
-
     public void setUpListener(Service targetService) {
         try {
             v2rayServicesListener = (V2rayServicesListener) targetService;
             Context context = targetService.getApplicationContext();
             String dataDir = context.getApplicationInfo().dataDir;
             
-            // Copy assets first
-            copyAssets(context);
-            
-            // Initialize with the correct data directory path
-            Libv2ray.initV2Env(dataDir, "");  // Changed from getUserAssetsPath to dataDir
+            // Initialize with the data directory path
+            Libv2ray.initV2Env(dataDir, "");
             
             isLibV2rayCoreInitialized = true;
             SERVICE_DURATION = "00:00:00";
@@ -210,7 +185,6 @@ public final class V2rayCoreManager {
             stopCore();
         }
         try {
-            String assetsPath = getUserAssetsPath(v2rayServicesListener.getService().getApplicationContext());
             v2RayPoint.setConfigureFileContent(v2rayConfig.V2RAY_FULL_JSON_CONFIG);
             v2RayPoint.setDomainName(v2rayConfig.CONNECTED_V2RAY_SERVER_ADDRESS + ":" + v2rayConfig.CONNECTED_V2RAY_SERVER_PORT);
             v2RayPoint.runLoop(false);

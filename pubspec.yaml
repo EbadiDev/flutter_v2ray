@@ -1,7 +1,7 @@
 name: flutter_v2ray
 description: A plugin that allow you to making v2ray connection (VPN Mode & Proxy Only)
 
-version: 1.0.9
+version: 1.0.10
 homepage: https://github.com/blueboy-tm/flutter_v2ray/
 
 environment:
@@ -12,6 +12,7 @@ dependencies:
   flutter:
     sdk: flutter
   plugin_platform_interface: ^2.0.2
+  path_provider: ^2.0.15
 
 dev_dependencies:
   flutter_test:
@@ -71,7 +72,3 @@ flutter:
   #
   # For details regarding fonts in packages, see
   # https://flutter.dev/custom-fonts/#from-packages
-
-  assets:
-    - assets/geoip.dat
-    - assets/geosite.dat
