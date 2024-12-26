@@ -43,9 +43,9 @@ public class Utilities {
         String extFolder = getUserAssetsPath(context);
         try {
             String geo = "geosite.dat,geoip.dat";
-            for (String assets_obj : context.getAssets().list("")) {
+            for (String assets_obj : context.getAssets().list("assets")) {
                 if (geo.contains(assets_obj)) {
-                    CopyFiles(context.getAssets().open(assets_obj), new File(extFolder, assets_obj));
+                    CopyFiles(context.getAssets().open("assets/" + assets_obj), new File(extFolder, assets_obj));
                 }
             }
         } catch (Exception e) {

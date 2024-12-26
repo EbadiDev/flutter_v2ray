@@ -15,6 +15,9 @@ import android.graphics.Color;
 import android.os.Build;
 import android.os.CountDownTimer;
 import android.util.Log;
+import org.json.JSONArray;
+import org.json.JSONObject;
+import org.json.JSONException;
 
 import androidx.annotation.RequiresApi;
 import androidx.core.app.ActivityCompat;
@@ -26,8 +29,6 @@ import com.github.blueboytm.flutter_v2ray.v2ray.services.V2rayVPNService;
 import com.github.blueboytm.flutter_v2ray.v2ray.utils.AppConfigs;
 import com.github.blueboytm.flutter_v2ray.v2ray.utils.Utilities;
 import com.github.blueboytm.flutter_v2ray.v2ray.utils.V2rayConfig;
-
-import org.json.JSONObject;
 
 import libv2ray.Libv2ray;
 import libv2ray.V2RayPoint;
@@ -209,6 +210,8 @@ public final class V2rayCoreManager {
             stopCore();
         }
         try {
+            String assetsPath = getUserAssetsPath(v2rayServicesListener.getService().getApplicationContext());
+            v2RayPoint.setAssetsPath(assetsPath);
             v2RayPoint.setConfigureFileContent(v2rayConfig.V2RAY_FULL_JSON_CONFIG);
             v2RayPoint.setDomainName(v2rayConfig.CONNECTED_V2RAY_SERVER_ADDRESS + ":" + v2rayConfig.CONNECTED_V2RAY_SERVER_PORT);
             v2RayPoint.runLoop(false);
@@ -367,19 +370,32 @@ public final class V2rayCoreManager {
         try {
             JSONObject config_json = new JSONObject(config);
             
-            // Remove DNS settings that use geosite
-            if (config_json.has("dns")) {
-                config_json.remove("dns");
+            // Create a simplified config for delay testing
+            JSONObject testConfig = new JSONObject();
+            
+            // Copy only essential outbound settings
+            if (config_json.has("outbounds")) {
+                JSONArray outbounds = config_json.getJSONArray("outbounds");
+                if (outbounds.length() > 0) {
+                    JSONArray simplifiedOutbounds = new JSONArray();
+                    simplifiedOutbounds.put(outbounds.getJSONObject(0)); // Only keep first outbound
+                    testConfig.put("outbounds", simplifiedOutbounds);
+                }
             }
             
-            // Remove routing rules that use geosite/geoip
-            if (config_json.has("routing")) {
-                JSONObject routing = config_json.getJSONObject("routing");
-                routing.remove("rules");
-                config_json.put("routing", routing);
-            }
+            // Add minimal DNS config
+            JSONObject simpleDns = new JSONObject();
+            simpleDns.put("servers", new JSONArray().put("8.8.8.8").put("8.8.4.4"));
+            testConfig.put("dns", simpleDns);
             
-            return Libv2ray.measureOutboundDelay(config_json.toString(), url);
+            // Add minimal routing config
+            JSONObject simpleRouting = new JSONObject();
+            simpleRouting.put("domainStrategy", "IPIfNonMatch");
+            simpleRouting.put("domainMatcher", "hybrid");
+            simpleRouting.put("rules", new JSONArray());
+            testConfig.put("routing", simpleRouting);
+            
+            return Libv2ray.measureOutboundDelay(testConfig.toString(), url);
         } catch (Exception e) {
             Log.e("getV2rayServerDelayCore", e.toString());
             return -1L;

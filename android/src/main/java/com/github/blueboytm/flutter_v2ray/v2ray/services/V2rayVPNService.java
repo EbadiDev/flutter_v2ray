@@ -1,8 +1,5 @@
 package com.github.blueboytm.flutter_v2ray.v2ray.services;
 
-import android.app.Notification;
-import android.app.NotificationChannel;
-import android.app.NotificationManager;
 import android.app.Service;
 import android.content.Intent;
 import android.net.LocalSocket;
@@ -27,10 +24,7 @@ import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 
-import androidx.core.app.NotificationCompat;
-
 public class V2rayVPNService extends VpnService implements V2rayServicesListener {
-    private static final int NOTIFICATION_ID = 1;
     private ParcelFileDescriptor mInterface;
     private Process process;
     private V2rayConfig v2rayConfig;
@@ -39,50 +33,37 @@ public class V2rayVPNService extends VpnService implements V2rayServicesListener
     @Override
     public void onCreate() {
         super.onCreate();
-        startForegroundWithEmptyNotification();
         V2rayCoreManager.getInstance().setUpListener(this);
-    }
-
-    private void startForegroundWithEmptyNotification() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            NotificationChannel channel = new NotificationChannel(
-                "v2ray_vpn_service",
-                "V2Ray VPN Service",
-                NotificationManager.IMPORTANCE_LOW);
-            
-            NotificationManager notificationManager = getSystemService(NotificationManager.class);
-            notificationManager.createNotificationChannel(channel);
-        }
-
-        Notification notification = new NotificationCompat.Builder(this, "v2ray_vpn_service")
-            .setContentTitle("V2Ray VPN")
-            .setContentText("Initializing...")
-            .setPriority(NotificationCompat.PRIORITY_LOW)
-            .build();
-
-        startForeground(NOTIFICATION_ID, notification);
     }
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        if (intent == null) {
-            return START_NOT_STICKY;
-        }
-
-        try {
-            String command = intent.getStringExtra("COMMAND");
-            if (command != null && command.equals(AppConfigs.V2RAY_SERVICE_COMMANDS.STOP_SERVICE)) {
-                V2rayCoreManager.getInstance().stopCore();
-                stopSelf();
-                return START_NOT_STICKY;
+        AppConfigs.V2RAY_SERVICE_COMMANDS startCommand = (AppConfigs.V2RAY_SERVICE_COMMANDS) intent.getSerializableExtra("COMMAND");
+        if (startCommand.equals(AppConfigs.V2RAY_SERVICE_COMMANDS.START_SERVICE)) {
+            v2rayConfig = (V2rayConfig) intent.getSerializableExtra("V2RAY_CONFIG");
+            if (v2rayConfig == null) {
+                this.onDestroy();
             }
-        } catch (Exception e) {
-            e.printStackTrace();
+            if (V2rayCoreManager.getInstance().isV2rayCoreRunning()) {
+                V2rayCoreManager.getInstance().stopCore();
+            }
+            if (V2rayCoreManager.getInstance().startCore(v2rayConfig)) {
+                Log.e(V2rayProxyOnlyService.class.getSimpleName(), "onStartCommand success => v2ray core started.");
+            } else {
+                this.onDestroy();
+            }
+        } else if (startCommand.equals(AppConfigs.V2RAY_SERVICE_COMMANDS.STOP_SERVICE)) {
+            V2rayCoreManager.getInstance().stopCore();
+            AppConfigs.V2RAY_CONFIG = null;
+        } else if (startCommand.equals(AppConfigs.V2RAY_SERVICE_COMMANDS.MEASURE_DELAY)) {
+            new Thread(() -> {
+                Intent sendB = new Intent("CONNECTED_V2RAY_SERVER_DELAY");
+                sendB.putExtra("DELAY", String.valueOf(V2rayCoreManager.getInstance().getConnectedV2rayServerDelay()));
+                sendBroadcast(sendB);
+            }, "MEASURE_CONNECTED_V2RAY_SERVER_DELAY").start();
+        } else {
+            this.onDestroy();
         }
-
-        // Setup V2Ray core
-        V2rayCoreManager.getInstance().setUpListener(this);
-        
         return START_STICKY;
     }
 

@@ -33,7 +33,7 @@ abstract class V2RayURL {
   Map<String, dynamic> log = {
     "access": "",
     "error": "",
-    "loglevel": "error",
+    "loglevel": "debug",
     "dnsLog": false,
   };
 
@@ -86,20 +86,7 @@ abstract class V2RayURL {
   };
 
   Map<String, dynamic> dns = {
-    "hosts": {
-      "domain:googleapis.com": "googleapis.com",
-      "domain:google.com": ["8.8.8.8", "8.8.4.4"]
-    },
-    "servers": [
-      {
-        "address": "https://dns.google/dns-query",
-        "domains": ["geosite:google"],
-        "skipFallback": true,
-        "queryStrategy": "UseIPv4"
-      },
-      "8.8.8.8",
-      "8.8.4.4"
-    ],
+    "servers": ["8.8.8.8", "8.8.4.4"],
     "queryStrategy": "UseIPv4",
     "disableCache": false
   };
@@ -110,22 +97,15 @@ abstract class V2RayURL {
     "rules": [
       {
         "type": "field",
-        "domain": ["geosite:ir"],
-        "outboundTag": "direct"
+        "outboundTag": "direct",
+        "domain": ["geosite:private"]
       },
       {
         "type": "field",
-        "ip": ["geoip:ir"],
-        "outboundTag": "direct"
-      },
-      {
         "outboundTag": "direct",
-        "ip": [
-          "geoip:ir",
-          "geoip:private"
-        ],
-        "type": "field"
-      }
+        "ip": ["geoip:private"]
+      },
+      {"type": "field", "outboundTag": "proxy", "network": "tcp,udp"}
     ],
     "balancers": []
   };
