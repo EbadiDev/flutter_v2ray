@@ -28,17 +28,37 @@ public class Utilities {
     }
 
     public static String getUserAssetsPath(Context context) {
-        File extDir = new File(context.getApplicationInfo().dataDir + "/v2ray");
-        if (!extDir.exists()) {
-            extDir.mkdirs();
+        File extDir = context.getExternalFilesDir("assets");
+        if (extDir == null) {
+            return "";
         }
-        return extDir.getAbsolutePath();
+        if (!extDir.exists()) {
+            return context.getDir("assets", 0).getAbsolutePath();
+        } else {
+            return extDir.getAbsolutePath();
+        }
     }
+
+    public static void copyAssets(final Context context) {
+        String extFolder = getUserAssetsPath(context);
+        try {
+            String geo = "geosite.dat,geoip.dat";
+            for (String assets_obj : context.getAssets().list("")) {
+                if (geo.contains(assets_obj)) {
+                    CopyFiles(context.getAssets().open(assets_obj), new File(extFolder, assets_obj));
+                }
+            }
+        } catch (Exception e) {
+            Log.e("Utilities", "copyAssets failed=>", e);
+        }
+    }
+
 
     public static String convertIntToTwoDigit(int value) {
         if (value < 10) return "0" + value;
         else return value + "";
     }
+
 
     public static V2rayConfig parseV2rayJsonFile(final String remark, String config, final ArrayList<String> blockedApplication, final ArrayList<String> bypass_subnets) {
         final V2rayConfig v2rayConfig = new V2rayConfig();
@@ -48,6 +68,7 @@ public class Utilities {
         v2rayConfig.APPLICATION_ICON = AppConfigs.APPLICATION_ICON;
         v2rayConfig.APPLICATION_NAME = AppConfigs.APPLICATION_NAME;
         v2rayConfig.NOTIFICATION_DISCONNECT_BUTTON_NAME = AppConfigs.NOTIFICATION_DISCONNECT_BUTTON_NAME;
+        v2rayConfig.NOTIFICATION_TITLE = AppConfigs.NOTIFICATION_TITLE;
         try {
             JSONObject config_json = new JSONObject(config);
             try {
@@ -131,5 +152,6 @@ public class Utilities {
         v2rayConfig.V2RAY_FULL_JSON_CONFIG = config;
         return v2rayConfig;
     }
+
 
 }

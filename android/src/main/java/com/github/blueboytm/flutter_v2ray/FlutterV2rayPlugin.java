@@ -18,7 +18,13 @@ import androidx.core.app.ActivityCompat;
 import com.github.blueboytm.flutter_v2ray.v2ray.V2rayController;
 import com.github.blueboytm.flutter_v2ray.v2ray.V2rayReceiver;
 import com.github.blueboytm.flutter_v2ray.v2ray.utils.AppConfigs;
+import com.google.gson.Gson;
 
+import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -28,13 +34,6 @@ import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding;
 import io.flutter.plugin.common.EventChannel;
 import io.flutter.plugin.common.MethodChannel;
 import io.flutter.plugin.common.PluginRegistry;
-
-import com.google.gson.Gson;
-import java.util.List;
-import java.util.Map;
-import java.util.HashMap;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CountDownLatch;
 
 /**
  * FlutterV2rayPlugin
@@ -91,10 +90,12 @@ public class FlutterV2rayPlugin implements FlutterPlugin, ActivityAware, PluginR
             switch (call.method) {
                 case "startV2Ray":
                     AppConfigs.NOTIFICATION_DISCONNECT_BUTTON_NAME = call.argument("notificationDisconnectButtonName");
+                    AppConfigs.NOTIFICATION_TITLE = call.argument("notificationTitle");
                     if (Boolean.TRUE.equals(call.argument("proxy_only"))) {
                         V2rayController.changeConnectionMode(AppConfigs.V2RAY_CONNECTION_MODES.PROXY_ONLY);
                     }
                     V2rayController.StartV2ray(binding.getApplicationContext(), call.argument("remark"), call.argument("config"), call.argument("blocked_apps"), call.argument("bypass_subnets"));
+                    android.util.Log.d("Plugin", "server:" + call.argument("config"));
                     result.success(null);
                     break;
                 case "stopV2Ray":
@@ -116,7 +117,6 @@ public class FlutterV2rayPlugin implements FlutterPlugin, ActivityAware, PluginR
                         }
                     });
                     break;
-                    
                 case "getConnectedServerDelay":
                     executor.submit(() -> {
                         try {
@@ -128,7 +128,7 @@ public class FlutterV2rayPlugin implements FlutterPlugin, ActivityAware, PluginR
                     });
                     break;
                 
-                    case "getAllServerDelay":
+                case "getAllServerDelay":
                     String res = call.argument("configs");
                     List<String> configs = new Gson().fromJson(res, List.class);
 
@@ -145,7 +145,7 @@ public class FlutterV2rayPlugin implements FlutterPlugin, ActivityAware, PluginR
                                     Long result = V2rayController.getV2rayServerDelay(config, "");
                                     Map<String, Long> myMap = new HashMap<>();
                                     myMap.put(config, result);
-//                                    android.util.Log.d("Plugin", "test ping: " + myMap);
+                                    android.util.Log.d("Plugin", "test ping: " + myMap);
 
                                     if (result != null) {
                                         realPings.put(config, result);
@@ -181,6 +181,16 @@ public class FlutterV2rayPlugin implements FlutterPlugin, ActivityAware, PluginR
 
                     break;
 
+
+                case "getV2rayStatus":
+                    executor.submit(() -> {
+                        try {
+                            result.success(V2rayController.getConnectionState().name());
+                        } catch (Exception e) {
+                            result.success("V2RAY_ERROR");
+                        }
+                    });
+                    break;
                 case "getCoreVersion":
                     result.success(V2rayController.getCoreVersion());
                     break;

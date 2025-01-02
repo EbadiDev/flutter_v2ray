@@ -1,5 +1,40 @@
 import 'dart:convert';
 
+class DnsSettings {
+  static Map<String, dynamic> hosts = {
+    "domain:googleapis.com": "googleapis.com",
+    "domain:google.com": ["8.8.8.8", "8.8.4.4"],
+    "domain:cloudflare.com": ["1.1.1.1", "1.0.0.1"]
+  };
+
+  static List<dynamic> servers = [
+    {
+      "address": "https://dns.google/dns-query",
+      "domains": ["geosite:google"],
+      "skipFallback": true,
+      "queryStrategy": "UseIPv4"
+    },
+    {
+      "address": "https://cloudflare-dns.com/dns-query",
+      "domains": ["geosite:cloudflare"],
+      "skipFallback": true,
+      "queryStrategy": "UseIPv4"
+    },
+    "1.1.1.1",
+    "1.0.0.1",
+    "8.8.8.8",
+    "8.8.4.4"
+  ];
+
+  static Map<String, dynamic> additionalSettings = {
+    "disableCache": false,
+    "disableFallback": false,
+    "disableFallbackIfMatch": true
+  };
+
+  static bool useAdvancedSettings = true;
+}
+
 abstract class V2RayURL {
   V2RayURL({required this.url});
   final String url;
@@ -13,110 +48,175 @@ abstract class V2RayURL {
   String get remark => '';
 
   Map<String, dynamic> inbound = {
-    "tag": "in_proxy",
-    "port": 1080,
+    "tag": "socks",
+    "port": 10808,
     "protocol": "socks",
     "listen": "127.0.0.1",
-    "settings": {
-      "auth": "noauth",
-      "udp": true,
-      "userLevel": 8,
-      "address": null,
-      "port": null,
-      "network": null
-    },
-    "sniffing": {"enabled": false, "destOverride": null, "metadataOnly": null},
-    "streamSettings": null,
-    "allocate": null
+    "settings": {"auth": "noauth", "udp": true, "allowTransparent": false},
+    "sniffing": {
+      "enabled": false,
+      "destOverride": ["http", "tls"],
+      "routeOnly": false
+    }
   };
 
   Map<String, dynamic> log = {
     "access": "",
     "error": "",
-    "loglevel": "debug",
+    "loglevel": "none",
     "dnsLog": false,
   };
+
+  Map<String, dynamic> get dns {
+    // Default simple configuration
+    Map<String, dynamic> dnsConfig = {
+      "servers": ["8.8.8.8"],
+      "queryStrategy": "UseIPv4",
+      "tag": "dns_out"
+    };
+
+    if (DnsSettings.useAdvancedSettings) {
+      // Add hosts if configured
+      if (DnsSettings.hosts.isNotEmpty) {
+        dnsConfig["hosts"] = DnsSettings.hosts;
+      }
+
+      // Add advanced server configurations if configured
+      if (DnsSettings.servers.isNotEmpty) {
+        dnsConfig["servers"] = DnsSettings.servers;
+      }
+
+      // Add additional settings
+      dnsConfig.addAll(DnsSettings.additionalSettings);
+    }
+
+    return dnsConfig;
+  }
+
+  Map<String, dynamic> get policy => {
+        "system": {"statsOutboundDownlink": true, "statsOutboundUplink": true}
+      };
 
   Map<String, dynamic> get outbound1;
 
   Map<String, dynamic> outbound2 = {
     "tag": "direct",
     "protocol": "freedom",
-    "settings": {
-      "vnext": null,
-      "servers": null,
-      "response": null,
-      "network": null,
-      "address": null,
-      "port": null,
-      "domainStrategy": "UseIp",
-      "redirect": null,
-      "userLevel": null,
-      "inboundTag": null,
-      "secretKey": null,
-      "peers": null
-    },
-    "streamSettings": null,
-    "proxySettings": null,
-    "sendThrough": null,
-    "mux": null
+    "settings": {}
   };
 
   Map<String, dynamic> outbound3 = {
-    "tag": "blackhole",
+    "tag": "block",
     "protocol": "blackhole",
     "settings": {
-      "vnext": null,
-      "servers": null,
-      "response": null,
-      "network": null,
-      "address": null,
-      "port": null,
-      "domainStrategy": null,
-      "redirect": null,
-      "userLevel": null,
-      "inboundTag": null,
-      "secretKey": null,
-      "peers": null
-    },
-    "streamSettings": null,
-    "proxySettings": null,
-    "sendThrough": null,
-    "mux": null
-  };
-
-  Map<String, dynamic> dns = {
-    "servers": ["8.8.8.8", "8.8.4.4"],
-    "queryStrategy": "UseIPv4",
-    "disableCache": false
+      "response": {"type": "http"}
+    }
   };
 
   Map<String, dynamic> routing = {
-    "domainStrategy": "IPIfNonMatch",
+    "domainStrategy": "AsIs",
     "domainMatcher": "hybrid",
     "rules": [
       {
         "type": "field",
-        "outboundTag": "direct",
-        "domain": ["geosite:private"]
+        "inboundTag": ["api"],
+        "outboundTag": "api",
+        "enabled": true
       },
       {
         "type": "field",
         "outboundTag": "direct",
-        "ip": ["geoip:private"]
+        "ip": ["geoip:ir", "geoip:private"],
+        "enabled": true
       },
-      {"type": "field", "outboundTag": "proxy", "network": "tcp,udp"}
-    ],
-    "balancers": []
+      {
+        "type": "field",
+        "outboundTag": "direct",
+        "domain": ["geosite:ir"],
+        "enabled": true
+      },
+      {
+        "type": "field",
+        "outboundTag": "direct",
+        "domain": ["keyword:discord", "keyword:discordapp"],
+        "network": "udp",
+        "enabled": true
+      },
+      {
+        "type": "field",
+        "outboundTag": "direct",
+        "domain": ["keyword:ttvnw.net", "keyword:tmaxfx"],
+        "network": "tcp",
+        "enabled": true
+      },
+      {
+        "type": "field",
+        "outboundTag": "direct",
+        "domain": ["geosite:whatsapp"],
+        "enabled": true
+      }
+    ]
   };
 
-  Map<String, dynamic> get fullConfiguration => {
-        "log": log,
-        "inbounds": [inbound],
-        "outbounds": [outbound1, outbound2, outbound3],
-        "dns": dns,
-        "routing": routing,
-      };
+  Map<String, dynamic> observatory = {
+    "subjectSelector": [], // Will be populated with remark
+    "probeUrl": "http://cp.cloudflare.com/",
+    "probeInterval": "10s",
+    "enableConcurrency": false,
+    "pingConfig": {
+      "destination": "http://cp.cloudflare.com/",
+      "connectivity": "",
+      "interval": "1h",
+      "sampling": 3,
+      "timeout": "30s"
+    }
+  };
+
+  Map<String, dynamic> get fullConfiguration {
+    observatory["subjectSelector"] = [remark];
+
+    // Add the catch-all rule with ID
+    routing["rules"].add({
+      "id": remark.replaceAll(RegExp(r'[^a-zA-Z0-9]'), ''),
+      "type": "field",
+      "port": "0-65535",
+      "outboundTag": remark,
+      "enabled": true
+    });
+
+    // Add IDs to existing rules if they don't have one
+    for (var rule in routing['rules']) {
+      if (!rule.containsKey('id')) {
+        rule['id'] = '${rule['outboundTag']}_${rule['type']}';
+      }
+    }
+
+    return {
+      "use_fragment": false,
+      "remarks": remark,
+      "log": log,
+      "dns": dns,
+      "policy": policy,
+      "inbounds": [
+        inbound,
+        {
+          "tag": "http",
+          "port": 10809,
+          "listen": "127.0.0.1",
+          "protocol": "http",
+          "sniffing": {
+            "enabled": true,
+            "destOverride": ["http", "tls"],
+            "routeOnly": false
+          },
+          "settings": {"auth": "noauth", "udp": true, "allowTransparent": false}
+        }
+      ],
+      "outbounds": [outbound1, outbound2, outbound3],
+      "routing": routing,
+      "observatory": observatory,
+    };
+  }
 
   /// Generate Full V2Ray Configuration
   ///
@@ -285,6 +385,11 @@ abstract class V2RayURL {
     if (params is Map) {
       var map = {};
       params.forEach((key, value) {
+        // Special handling for DNS configuration
+        if (key == "dns") {
+          map[key] = value;
+          return;
+        }
         var value0 = removeNulls(value);
         if (value0 != null) {
           map[key] = value0;

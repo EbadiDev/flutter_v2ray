@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'dart:io';
-import 'dart:developer' as developer;
 
 import 'package:flutter_v2ray/url/shadowsocks.dart';
 import 'package:flutter_v2ray/url/socks.dart';
@@ -8,24 +7,12 @@ import 'package:flutter_v2ray/url/trojan.dart';
 import 'package:flutter_v2ray/url/url.dart';
 import 'package:flutter_v2ray/url/vless.dart';
 import 'package:flutter_v2ray/url/vmess.dart';
-import 'package:flutter_v2ray/url/custom_config.dart';
 
 import 'flutter_v2ray_platform_interface.dart';
 import 'model/v2ray_status.dart';
 
 export 'model/v2ray_status.dart';
 export 'url/url.dart';
-
-class V2RayInitializationException implements Exception {
-  final String message;
-  final dynamic originalError;
-
-  V2RayInitializationException(this.message, [this.originalError]);
-
-  @override
-  String toString() =>
-      'V2RayInitializationException: $message${originalError != null ? '\nOriginal error: $originalError' : ''}';
-}
 
 class FlutterV2ray {
   FlutterV2ray({required this.onStatusChanged});
@@ -51,14 +38,6 @@ class FlutterV2ray {
       notificationIconResourceType: notificationIconResourceType,
       notificationIconResourceName: notificationIconResourceName,
     );
-  }
-
-  Future<void> dispose() async {
-    try {
-      await stopV2Ray();
-    } catch (e) {
-      developer.log('Error during V2Ray disposal', error: e);
-    }
   }
 
   /// Start V2Ray service.
@@ -97,6 +76,7 @@ class FlutterV2ray {
     List<String>? bypassSubnets,
     bool proxyOnly = false,
     String notificationDisconnectButtonName = "DISCONNECT",
+    String? notificationTitle,
   }) async {
     try {
       if (jsonDecode(config) == null) {
@@ -113,6 +93,7 @@ class FlutterV2ray {
       proxyOnly: proxyOnly,
       bypassSubnets: bypassSubnets,
       notificationDisconnectButtonName: notificationDisconnectButtonName,
+      notificationTitle: notificationTitle ?? remark,
     );
   }
 
@@ -128,7 +109,7 @@ class FlutterV2ray {
   /// This method returns the real server delay of the configuration.
   Future<int> getServerDelay(
       {required String config,
-      String url = 'http://google.com/generate_204'}) async {
+      String url = 'https://google.com/generate_204'}) async {
     try {
       if (jsonDecode(config) == null) {
         throw ArgumentError('The provided string is not valid JSON');
@@ -138,6 +119,16 @@ class FlutterV2ray {
     }
     return await FlutterV2rayPlatform.instance
         .getServerDelay(config: config, url: url);
+  }
+
+  /// This method returns the current connection state
+  /// in the form of the String, which can be either
+  ///  - ["CONNECTING"]
+  ///  - ["CONNECTED"]
+  ///  - ["DISCONNECTED"]
+  ///  - ["ERROR"]
+  Future<String> getV2rayStatus() async {
+    return await FlutterV2rayPlatform.instance.getV2rayStatus();
   }
 
   /// This method returns the connected server delay.
@@ -155,25 +146,19 @@ class FlutterV2ray {
   ///
   /// like vmess://, vless://, trojan://, ss://, socks://
   static V2RayURL parseFromURL(String url) {
-    // Try parsing as JSON first for custom configs
-    try {
-      return CustomConfigURL(url: url);
-    } catch (_) {
-      // If not JSON, try parsing as URI
-      switch (url.split("://")[0].toLowerCase()) {
-        case 'vmess':
-          return VmessURL(url: url);
-        case 'vless':
-          return VlessURL(url: url);
-        case 'trojan':
-          return TrojanURL(url: url);
-        case 'ss':
-          return ShadowSocksURL(url: url);
-        case 'socks':
-          return SocksURL(url: url);
-        default:
-          throw ArgumentError('url is invalid');
-      }
+    switch (url.split("://")[0].toLowerCase()) {
+      case 'vmess':
+        return VmessURL(url: url);
+      case 'vless':
+        return VlessURL(url: url);
+      case 'trojan':
+        return TrojanURL(url: url);
+      case 'ss':
+        return ShadowSocksURL(url: url);
+      case 'socks':
+        return SocksURL(url: url);
+      default:
+        throw ArgumentError('url is invalid');
     }
   }
 }

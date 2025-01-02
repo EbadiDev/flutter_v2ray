@@ -64,7 +64,7 @@ class TrojanURL extends V2RayURL {
 
   @override
   Map<String, dynamic> get outbound1 => {
-        "tag": "proxy",
+        "tag": remark,
         "protocol": "trojan",
         "settings": {
           "vnext": null,
@@ -98,4 +98,24 @@ class TrojanURL extends V2RayURL {
         "sendThrough": null,
         "mux": {"enabled": false, "concurrency": 8}
       };
+
+  @override
+  Map<String, dynamic> get fullConfiguration {
+    // Ensure routing rules use the correct outboundTag
+    for (var rule in routing['rules']) {
+      if (rule['outboundTag'] == null) {
+        rule['outboundTag'] = remark;
+      }
+    }
+
+    // Add the catch-all rule
+    routing['rules'].add({
+      "type": "field",
+      "port": "0-65535",
+      "outboundTag": remark,
+      "enabled": true
+    });
+
+    return super.fullConfiguration;
+  }
 }

@@ -1,6 +1,10 @@
+## 1.0.10
+
+* add ability to change notification title 
+* add ability to know the exact connection status at any time
+
 ## 1.0.9
 
-* update v2ray core to v24.12.18
 * add disconnect button (notificationDisconnectButtonName)
 * fix requestPermission
 * fix notification bugs  (android 13 and higher)

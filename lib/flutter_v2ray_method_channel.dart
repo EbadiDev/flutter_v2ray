@@ -1,7 +1,8 @@
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'model/v2ray_status.dart' show V2RayStatus;
-import 'dart:convert';
+
 import 'flutter_v2ray_platform_interface.dart';
 
 /// An implementation of [FlutterV2rayPlatform] that uses method channels.
@@ -43,6 +44,7 @@ class MethodChannelFlutterV2ray extends FlutterV2rayPlatform {
     required String remark,
     required String config,
     required String notificationDisconnectButtonName,
+    required String notificationTitle,
     List<String>? blockedApps,
     List<String>? bypassSubnets,
     bool proxyOnly = false,
@@ -54,14 +56,7 @@ class MethodChannelFlutterV2ray extends FlutterV2rayPlatform {
       "bypass_subnets": bypassSubnets,
       "proxy_only": proxyOnly,
       "notificationDisconnectButtonName": notificationDisconnectButtonName,
-    });
-  }
-
-  @override
-  Future<dynamic> getAllServerDelay({required List<String> configs}) {
-    final res = jsonEncode(configs);
-    return methodChannel.invokeMethod('getAllServerDelay', {
-      "configs": res,
+      "notificationTitle": notificationTitle,
     });
   }
 
@@ -80,9 +75,24 @@ class MethodChannelFlutterV2ray extends FlutterV2rayPlatform {
   }
 
   @override
+  Future<dynamic> getAllServerDelay({required List<String> configs}) {
+    final res = jsonEncode(configs);
+    return methodChannel.invokeMethod('getAllServerDelay', {
+      "configs": res,
+    });
+  }
+
+  @override
   Future<int> getConnectedServerDelay(String url) async {
     return await methodChannel
         .invokeMethod('getConnectedServerDelay', {"url": url});
+  }
+
+  @override
+  Future<String> getV2rayStatus() async {
+    final String? val = await methodChannel.invokeMethod("getV2rayStatus");
+
+    return (val?.split("_"))?.elementAtOrNull(1) ?? "ERROR";
   }
 
   @override

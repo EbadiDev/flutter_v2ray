@@ -15,9 +15,6 @@ import android.graphics.Color;
 import android.os.Build;
 import android.os.CountDownTimer;
 import android.util.Log;
-import org.json.JSONArray;
-import org.json.JSONObject;
-import org.json.JSONException;
 
 import androidx.annotation.RequiresApi;
 import androidx.core.app.ActivityCompat;
@@ -30,13 +27,11 @@ import com.github.blueboytm.flutter_v2ray.v2ray.utils.AppConfigs;
 import com.github.blueboytm.flutter_v2ray.v2ray.utils.Utilities;
 import com.github.blueboytm.flutter_v2ray.v2ray.utils.V2rayConfig;
 
+import org.json.JSONObject;
+
 import libv2ray.Libv2ray;
 import libv2ray.V2RayPoint;
 import libv2ray.V2RayVPNServiceSupportsSet;
-
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.InputStream;
 
 public final class V2rayCoreManager {
     private static final int NOTIFICATION_ID = 1;
@@ -151,12 +146,7 @@ public final class V2rayCoreManager {
     public void setUpListener(Service targetService) {
         try {
             v2rayServicesListener = (V2rayServicesListener) targetService;
-            Context context = targetService.getApplicationContext();
-            String dataDir = context.getApplicationInfo().dataDir;
-            
-            // Initialize with the data directory path
-            Libv2ray.initV2Env(dataDir, "");
-            
+            Libv2ray.initV2Env(getUserAssetsPath(targetService.getApplicationContext()), "");
             isLibV2rayCoreInitialized = true;
             SERVICE_DURATION = "00:00:00";
             seconds = 0;
@@ -312,7 +302,7 @@ public final class V2rayCoreManager {
         // Build the notification
         NotificationCompat.Builder notificationBuilder = new NotificationCompat.Builder(context, notificationChannelID)
                 .setSmallIcon(v2rayConfig.APPLICATION_ICON)
-                .setContentTitle(v2rayConfig.REMARK)
+                .setContentTitle(v2rayConfig.NOTIFICATION_TITLE)
                 .addAction(0, v2rayConfig.NOTIFICATION_DISCONNECT_BUTTON_NAME, pendingIntent)
                 .setPriority(NotificationCompat.PRIORITY_MIN)
                 .setShowWhen(false)
@@ -341,34 +331,17 @@ public final class V2rayCoreManager {
 
     public Long getV2rayServerDelay(final String config, final String url) {
         try {
-            JSONObject config_json = new JSONObject(config);
-            
-            // Create a simplified config for delay testing
-            JSONObject testConfig = new JSONObject();
-            
-            // Copy only essential outbound settings
-            if (config_json.has("outbounds")) {
-                JSONArray outbounds = config_json.getJSONArray("outbounds");
-                if (outbounds.length() > 0) {
-                    JSONArray simplifiedOutbounds = new JSONArray();
-                    simplifiedOutbounds.put(outbounds.getJSONObject(0)); // Only keep first outbound
-                    testConfig.put("outbounds", simplifiedOutbounds);
-                }
+            try {
+                JSONObject config_json = new JSONObject(config);
+                JSONObject new_routing_json = config_json.getJSONObject("routing");
+                new_routing_json.remove("rules");
+                config_json.remove("routing");
+                config_json.put("routing", new_routing_json);
+                return Libv2ray.measureOutboundDelay(config_json.toString(), url);
+            } catch (Exception json_error) {
+                Log.e("getV2rayServerDelay", json_error.toString());
+                return Libv2ray.measureOutboundDelay(config, url);
             }
-            
-            // Add minimal DNS config
-            JSONObject simpleDns = new JSONObject();
-            simpleDns.put("servers", new JSONArray().put("8.8.8.8").put("8.8.4.4"));
-            testConfig.put("dns", simpleDns);
-            
-            // Add minimal routing config
-            JSONObject simpleRouting = new JSONObject();
-            simpleRouting.put("domainStrategy", "IPIfNonMatch");
-            simpleRouting.put("domainMatcher", "hybrid");
-            simpleRouting.put("rules", new JSONArray());
-            testConfig.put("routing", simpleRouting);
-            
-            return Libv2ray.measureOutboundDelay(testConfig.toString(), url);
         } catch (Exception e) {
             Log.e("getV2rayServerDelayCore", e.toString());
             return -1L;

@@ -6,40 +6,26 @@
 
 
 ## Table of contents
-- [flutter\_v2ray](#flutter_v2ray)
-  - [Table of contents](#table-of-contents)
-  - [Change logs](#change-logs)
-    - [1.0.9](#109)
-      - [see more](#see-more)
-  - [Features](#features)
-  - [Supported Platforms](#supported-platforms)
-  - [Get started](#get-started)
-    - [Add dependency](#add-dependency)
-  - [Examples](#examples)
-    - [URL Parser](#url-parser)
-    - [Edit Configuration](#edit-configuration)
-    - [Making V2Ray connection](#making-v2ray-connection)
-    - [Bypass LAN Traffic](#bypass-lan-traffic)
-  - [Android configuration before publish to Google Play🚀](#android-configuration-before-publish-to-google-play)
-    - [gradle.preperties](#gradlepreperties)
-    - [build.gradle (app)](#buildgradle-app)
-  - [More examples](#more-examples)
-  - [Credits](#credits)
-  - [Donation](#donation)
-    - [Buy me a coffee](#buy-me-a-coffee)
-    - [Cryptocurrency](#cryptocurrency)
++ [Change logs](#change-logs)
++ [Features](#features)
++ [Supported Platforms](#supported-platforms)
++ [Get started](#get-started)
+    * [Add dependency](#add-dependency)
+    * [Examples](#examples)
+        * [URL Parser](#url-parser)
+        * [Edit Configuration](#edit-configuration)
+        * [Making V2Ray connection](#making-v2ray-connection)
+        * [Bypass LAN Traffic](#bypass-lan-traffic)
+        * [More](#more-examples)
++ [Credits](#credits)
++ [Donation](#donation)
 
 
 ## Change logs
-### 1.0.9
+### 1.0.10
 
-* add disconnect button (notificationDisconnectButtonName)
-* fix requestPermission
-* fix notification bugs  (android 13 and higher)
-* update v2ray core to  v24.11.11
-* add dns settings
-* add routing settings
-
+* add ability to change notification title 
+* add ability to know the exact connection status at any time
 
 #### [see more](./CHANGELOG.md)
 
@@ -54,7 +40,7 @@
 
 | Platform  | Status    | Info |
 | --------- | --------- | ---- |
-| Android   | Done ✅   | Xray v24.11.11 |
+| Android   | Done ✅   | Xray 1.8.7 |
 | IOS       | Done ✅   | For purchase: [t.me/blueboy_tm](https://t.me/blueboy_tm) |
 | Desktop   | Done ✅   | For purchase: [t.me/blueboy_tm](https://t.me/blueboy_tm) |
 

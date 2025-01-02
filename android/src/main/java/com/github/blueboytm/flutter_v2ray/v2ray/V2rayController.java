@@ -21,10 +21,7 @@ import libv2ray.Libv2ray;
 public class V2rayController {
 
     public static void init(final Context context, final int app_icon, final String app_name) {
-        // Initialize V2Ray environment
-        String dataDir = context.getApplicationInfo().dataDir;
-        Libv2ray.initV2Env(dataDir, "");
-        
+        Utilities.copyAssets(context);
         AppConfigs.APPLICATION_ICON = app_icon;
         AppConfigs.APPLICATION_NAME = app_name;
 

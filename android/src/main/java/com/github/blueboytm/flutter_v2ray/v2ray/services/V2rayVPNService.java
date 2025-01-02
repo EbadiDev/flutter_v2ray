@@ -124,8 +124,18 @@ public class V2rayVPNService extends VpnService implements V2rayServicesListener
             JSONObject dnsObject = json.getJSONObject("dns");
             JSONArray serversArray = dnsObject.getJSONArray("servers");
             for (int i = 0; i < serversArray.length(); i++) {
-                String server = serversArray.getString(i);
-                builder.addDnsServer(server);
+                Object serverObj = serversArray.get(i);
+                if (serverObj instanceof String) {
+                    // Handle simple string DNS server
+                    builder.addDnsServer((String) serverObj);
+                } else if (serverObj instanceof JSONObject) {
+                    // Handle object-based DNS server
+                    JSONObject serverJson = (JSONObject) serverObj;
+                    String address = serverJson.getString("address");
+                    if (!address.startsWith("https://") && !address.startsWith("http://")) {
+                        builder.addDnsServer(address);
+                    }
+                }
             }
         } catch (JSONException e) {
             e.printStackTrace();

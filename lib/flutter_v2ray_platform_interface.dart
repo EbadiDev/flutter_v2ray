@@ -16,6 +16,10 @@ abstract class FlutterV2rayPlatform extends PlatformInterface {
   /// Defaults to [MethodChannelFlutterV2ray].
   static FlutterV2rayPlatform get instance => _instance;
 
+  Future<dynamic> getAllServerDelay({required List<String> configs}) {
+    throw UnimplementedError('getAllServerDelay() has not been implemented.');
+  }
+
   /// Platform-specific implementations should set this with their own
   /// platform-specific class that extends [FlutterV2rayPlatform] when
   /// they register themselves.
@@ -40,15 +44,12 @@ abstract class FlutterV2rayPlatform extends PlatformInterface {
     required String remark,
     required String config,
     required String notificationDisconnectButtonName,
+    required String notificationTitle,
     List<String>? blockedApps,
     List<String>? bypassSubnets,
     bool proxyOnly = false,
   }) {
     throw UnimplementedError('startV2Ray() has not been implemented.');
-  }
-
-  Future<dynamic> getAllServerDelay({required List<String> configs}) {
-    throw UnimplementedError('getAllServerDelay() has not been implemented.');
   }
 
   Future<void> stopV2Ray() {
@@ -62,6 +63,12 @@ abstract class FlutterV2rayPlatform extends PlatformInterface {
   Future<int> getConnectedServerDelay(String url) async {
     throw UnimplementedError(
       'getConnectedServerDelay() has not been implemented.',
+    );
+  }
+
+  Future<String> getV2rayStatus() async {
+    throw UnimplementedError(
+      'getV2rayStatus() has not been implemented',
     );
   }
 
