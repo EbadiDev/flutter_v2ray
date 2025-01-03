@@ -20,6 +20,13 @@ abstract class FlutterV2rayPlatform extends PlatformInterface {
     throw UnimplementedError('getAllServerDelay() has not been implemented.');
   }
 
+  Future<Map<String, int>> getAllServerPing({
+    required List<String> configs,
+    String url = 'http://cp.cloudflare.com',
+  }) {
+    throw UnimplementedError('getAllServerPing() has not been implemented.');
+  }
+
   /// Platform-specific implementations should set this with their own
   /// platform-specific class that extends [FlutterV2rayPlatform] when
   /// they register themselves.

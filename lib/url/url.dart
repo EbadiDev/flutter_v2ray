@@ -68,14 +68,14 @@ abstract class V2RayURL {
   };
 
   Map<String, dynamic> get dns {
-    // Default simple configuration
+    // Default simple configuration for delay testing
     Map<String, dynamic> dnsConfig = {
-      "servers": ["8.8.8.8"],
-      "queryStrategy": "UseIPv4",
-      "tag": "dns_out"
+      "servers": ["8.8.8.8", "8.8.4.4"],
+      "queryStrategy": "UseIPv4"
     };
 
-    if (DnsSettings.useAdvancedSettings) {
+    // Only use advanced settings when not testing delay
+    if (DnsSettings.useAdvancedSettings && !isDelayTesting) {
       // Add hosts if configured
       if (DnsSettings.hosts.isNotEmpty) {
         dnsConfig["hosts"] = DnsSettings.hosts;
@@ -92,6 +92,8 @@ abstract class V2RayURL {
 
     return dnsConfig;
   }
+
+  bool isDelayTesting = false;
 
   Map<String, dynamic> get policy => {
         "system": {"statsOutboundDownlink": true, "statsOutboundUplink": true}
@@ -113,50 +115,66 @@ abstract class V2RayURL {
     }
   };
 
-  Map<String, dynamic> routing = {
-    "domainStrategy": "AsIs",
-    "domainMatcher": "hybrid",
-    "rules": [
-      {
-        "type": "field",
-        "inboundTag": ["api"],
-        "outboundTag": "api",
-        "enabled": true
-      },
-      {
-        "type": "field",
-        "outboundTag": "direct",
-        "ip": ["geoip:ir", "geoip:private"],
-        "enabled": true
-      },
-      {
-        "type": "field",
-        "outboundTag": "direct",
-        "domain": ["geosite:ir"],
-        "enabled": true
-      },
-      {
-        "type": "field",
-        "outboundTag": "direct",
-        "domain": ["keyword:discord", "keyword:discordapp"],
-        "network": "udp",
-        "enabled": true
-      },
-      {
-        "type": "field",
-        "outboundTag": "direct",
-        "domain": ["keyword:ttvnw.net", "keyword:tmaxfx"],
-        "network": "tcp",
-        "enabled": true
-      },
-      {
-        "type": "field",
-        "outboundTag": "direct",
-        "domain": ["geosite:whatsapp"],
-        "enabled": true
-      }
-    ]
-  };
+  Map<String, dynamic> get routing {
+    if (isDelayTesting) {
+      return {
+        "domainStrategy": "AsIs",
+        "rules": [
+          {
+            "type": "field",
+            "outboundTag": remark,
+            "port": "0-65535",
+            "enabled": true
+          }
+        ]
+      };
+    }
+
+    return {
+      "domainStrategy": "AsIs",
+      "domainMatcher": "hybrid",
+      "rules": [
+        {
+          "type": "field",
+          "inboundTag": ["api"],
+          "outboundTag": "api",
+          "enabled": true
+        },
+        {
+          "type": "field",
+          "outboundTag": "direct",
+          "ip": ["geoip:ir", "geoip:private"],
+          "enabled": true
+        },
+        {
+          "type": "field",
+          "outboundTag": "direct",
+          "domain": ["geosite:ir"],
+          "enabled": true
+        },
+        {
+          "type": "field",
+          "outboundTag": "direct",
+          "domain": ["keyword:discord", "keyword:discordapp"],
+          "network": "udp",
+          "enabled": true
+        },
+        {
+          "type": "field",
+          "outboundTag": "direct",
+          "domain": ["keyword:ttvnw.net", "keyword:tmaxfx"],
+          "network": "tcp",
+          "enabled": true
+        },
+        {
+          "type": "field",
+          "outboundTag": "direct",
+          "domain": ["geosite:whatsapp"],
+          "enabled": true
+        }
+      ]
+    };
+  }
 
   Map<String, dynamic> observatory = {
     "subjectSelector": [], // Will be populated with remark

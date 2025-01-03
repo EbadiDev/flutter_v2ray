@@ -19,6 +19,7 @@ import com.github.blueboytm.flutter_v2ray.v2ray.V2rayController;
 import com.github.blueboytm.flutter_v2ray.v2ray.V2rayReceiver;
 import com.github.blueboytm.flutter_v2ray.v2ray.utils.AppConfigs;
 import com.google.gson.Gson;
+import com.google.gson.JsonObject;
 
 import java.util.List;
 import java.util.Map;
@@ -112,6 +113,7 @@ public class FlutterV2rayPlugin implements FlutterPlugin, ActivityAware, PluginR
                     executor.submit(() -> {
                         try {
                             result.success(V2rayController.getV2rayServerDelay(call.argument("config"), call.argument("url")));
+                            android.util.Log.d("Plugin", "getServerDelay: " + V2rayController.getV2rayServerDelay(call.argument("config"), call.argument("url")));
                         } catch (Exception e) {
                             result.success(-1);
                         }
@@ -178,9 +180,72 @@ public class FlutterV2rayPlugin implements FlutterPlugin, ActivityAware, PluginR
                             }
                         }
                     }).start();
-
                     break;
 
+                case "getAllServerPing":
+                    String pingRes = call.argument("configs");
+                    String pingUrl = call.argument("url");
+                    List<String> pingConfigs = new Gson().fromJson(pingRes, List.class);
+                    
+                    android.util.Log.d("Plugin", "Starting ping test for " + pingConfigs.size() + " servers");
+
+                    ConcurrentHashMap<String, Long> pingResults = new ConcurrentHashMap<>();
+                    CountDownLatch pingLatch = new CountDownLatch(pingConfigs.size());
+
+                    for (String config : pingConfigs) {
+                        new Thread(new Runnable() {
+                            @Override
+                            public void run() {
+                                try {
+                                    // Parse the config to get the remark
+                                    JsonObject jsonConfig = new Gson().fromJson(config, JsonObject.class);
+                                    String remark = jsonConfig.has("remarks") ? 
+                                        jsonConfig.get("remarks").getAsString() : "unknown";
+                                    
+                                    android.util.Log.d("Plugin", "Testing server: " + remark);
+                                    Long pingResult = V2rayController.getV2rayServerDelay(config, pingUrl);
+                                    android.util.Log.d("Plugin", "Ping result for " + remark + ": " + pingResult + "ms");
+                                    
+                                    if (pingResult != null && pingResult != -1) {
+                                        pingResults.put(remark, pingResult);
+                                        android.util.Log.d("Plugin", "Added result for " + remark + ": " + pingResult + "ms");
+                                    } else {
+                                        android.util.Log.d("Plugin", "Skipped invalid result for " + remark + ": " + pingResult);
+                                    }
+                                } catch (Exception e) {
+                                    android.util.Log.e("Plugin", "Error pinging server: " + e.getMessage());
+                                } finally {
+                                    pingLatch.countDown();
+                                    android.util.Log.d("Plugin", "Remaining servers: " + pingLatch.getCount());
+                                }
+                            }
+                        }).start();
+                    }
+
+                    new Thread(new Runnable() {
+                        @Override
+                        public void run() {
+                            try {
+                                android.util.Log.d("Plugin", "Waiting for all pings to complete...");
+                                pingLatch.await();
+                                android.util.Log.d("Plugin", "All pings completed. Results: " + pingResults.size());
+                                
+                                activity.runOnUiThread(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        String jsonResult = new Gson().toJson(pingResults);
+                                        android.util.Log.d("Plugin", "Returning results: " + jsonResult);
+                                        result.success(jsonResult);
+                                    }
+                                });
+                            } catch (InterruptedException e) {
+                                android.util.Log.e("Plugin", "Error waiting for pings: " + e.getMessage());
+                                e.printStackTrace();
+                                result.error("PING_ERROR", "Error while pinging servers", e.getMessage());
+                            }
+                        }
+                    }).start();
+                    break;
 
                 case "getV2rayStatus":
                     executor.submit(() -> {

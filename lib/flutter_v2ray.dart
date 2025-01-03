@@ -98,7 +98,93 @@ class FlutterV2ray {
   }
 
   Future<dynamic> getAllServerDelay({required List<String> configs}) async {
-    return FlutterV2rayPlatform.instance.getAllServerDelay(configs: configs);
+    try {
+      List<String> modifiedConfigs = [];
+
+      for (String config in configs) {
+        Map<String, dynamic> configMap = jsonDecode(config);
+
+        // Simplify DNS configuration
+        if (configMap.containsKey('dns')) {
+          configMap['dns'] = {
+            "servers": ["8.8.8.8", "8.8.4.4"],
+            "queryStrategy": "UseIPv4"
+          };
+        }
+
+        // Simplify routing configuration
+        if (configMap.containsKey('routing')) {
+          configMap['routing'] = {
+            "domainStrategy": "AsIs",
+            "rules": [
+              {
+                "type": "field",
+                "outboundTag": configMap['remarks'] ?? "proxy",
+                "port": "0-65535",
+                "enabled": true
+              }
+            ]
+          };
+        }
+
+        modifiedConfigs.add(jsonEncode(configMap));
+      }
+
+      return await FlutterV2rayPlatform.instance
+          .getAllServerDelay(configs: modifiedConfigs);
+    } catch (e) {
+      print('Error in getAllServerDelay: $e');
+      throw ArgumentError('Error processing configurations: $e');
+    }
+  }
+
+  /// Get ping times for multiple servers in parallel
+  /// Returns a map of config string to ping time in milliseconds
+  /// Returns -1 for failed pings
+  Future<Map<String, int>> getAllServerPing({
+    required List<String> configs,
+    String url = 'http://cp.cloudflare.com',
+  }) async {
+    try {
+      List<String> modifiedConfigs = [];
+
+      for (String config in configs) {
+        Map<String, dynamic> configMap = jsonDecode(config);
+
+        // Simplify DNS configuration
+        if (configMap.containsKey('dns')) {
+          configMap['dns'] = {
+            "servers": ["8.8.8.8", "8.8.4.4"],
+            "queryStrategy": "UseIPv4"
+          };
+        }
+
+        // Simplify routing configuration
+        if (configMap.containsKey('routing')) {
+          configMap['routing'] = {
+            "domainStrategy": "AsIs",
+            "rules": [
+              {
+                "type": "field",
+                "outboundTag": configMap['remarks'] ?? "proxy",
+                "port": "0-65535",
+                "enabled": true
+              }
+            ]
+          };
+        }
+
+        modifiedConfigs.add(jsonEncode(configMap));
+      }
+
+      return await FlutterV2rayPlatform.instance.getAllServerPing(
+        configs: modifiedConfigs,
+        url: url,
+      );
+    } catch (e) {
+      print('Error in getAllServerPing: $e');
+      throw ArgumentError('Error processing configurations: $e');
+    }
   }
 
   /// Stop V2Ray service.
@@ -111,14 +197,39 @@ class FlutterV2ray {
       {required String config,
       String url = 'https://google.com/generate_204'}) async {
     try {
-      if (jsonDecode(config) == null) {
-        throw ArgumentError('The provided string is not valid JSON');
+      Map<String, dynamic> configMap = jsonDecode(config);
+
+      // Simplify DNS configuration
+      if (configMap.containsKey('dns')) {
+        configMap['dns'] = {
+          "servers": ["8.8.8.8", "8.8.4.4"],
+          "queryStrategy": "UseIPv4"
+        };
       }
-    } catch (_) {
-      throw ArgumentError('The provided string is not valid JSON');
+
+      // Simplify routing configuration
+      if (configMap.containsKey('routing')) {
+        configMap['routing'] = {
+          "domainStrategy": "AsIs",
+          "rules": [
+            {
+              "type": "field",
+              "outboundTag": configMap['remarks'] ?? "proxy",
+              "port": "0-65535",
+              "enabled": true
+            }
+          ]
+        };
+      }
+
+      String modifiedConfig = jsonEncode(configMap);
+
+      return await FlutterV2rayPlatform.instance
+          .getServerDelay(config: modifiedConfig, url: url);
+    } catch (e) {
+      print('Error in getServerDelay: $e');
+      throw ArgumentError('Error processing configuration: $e');
     }
-    return await FlutterV2rayPlatform.instance
-        .getServerDelay(config: config, url: url);
   }
 
   /// This method returns the current connection state

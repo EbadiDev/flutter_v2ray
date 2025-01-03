@@ -83,6 +83,31 @@ class MethodChannelFlutterV2ray extends FlutterV2rayPlatform {
   }
 
   @override
+  Future<Map<String, int>> getAllServerPing({
+    required List<String> configs,
+    String url = 'http://cp.cloudflare.com',
+  }) async {
+    print('Starting ping test for ${configs.length} servers');
+    final res = jsonEncode(configs);
+
+    print('Sending request to native code...');
+    final result = await methodChannel.invokeMethod('getAllServerPing', {
+      "configs": res,
+      "url": url,
+    });
+
+    print('Received response from native code: $result');
+    final Map<String, dynamic> decoded = jsonDecode(result.toString());
+    print('Decoded JSON results: $decoded');
+
+    final Map<String, int> converted =
+        decoded.map((key, value) => MapEntry(key, (value as num).toInt()));
+    print('Final converted results: $converted');
+
+    return converted;
+  }
+
+  @override
   Future<int> getConnectedServerDelay(String url) async {
     return await methodChannel
         .invokeMethod('getConnectedServerDelay', {"url": url});
