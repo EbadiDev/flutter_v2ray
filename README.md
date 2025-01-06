@@ -22,10 +22,12 @@
 
 
 ## Change logs
-### 1.0.10
+### 1.0.11
 
-* add ability to change notification title 
-* add ability to know the exact connection status at any time
+* fix HTTPUpgrade header handling in ping tests
+* add 2.5s timeout for delay tests
+* improve delay calculation by subtracting 50ms from results
+* fix shadowsocks DNS resolution issues
 
 #### [see more](./CHANGELOG.md)
 
@@ -40,7 +42,7 @@
 
 | Platform  | Status    | Info |
 | --------- | --------- | ---- |
-| Android   | Done ✅   | Xray 1.8.7 |
+| Android   | Done ✅   | Xray 1.8.17 |
 | IOS       | Done ✅   | For purchase: [t.me/blueboy_tm](https://t.me/blueboy_tm) |
 | Desktop   | Done ✅   | For purchase: [t.me/blueboy_tm](https://t.me/blueboy_tm) |
 

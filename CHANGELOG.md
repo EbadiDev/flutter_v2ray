@@ -1,3 +1,10 @@
+## 1.0.11
+
+* fix HTTPUpgrade header handling in ping tests
+* add 2.5s timeout for delay tests
+* improve delay calculation by subtracting 50ms from results
+* fix shadowsocks DNS resolution issues
+
 ## 1.0.10
 
 * add ability to change notification title 
