@@ -278,42 +278,62 @@ abstract class V2RayURL {
     if (transport == 'tcp') {
       streamSetting['tcpSettings'] = {
         "header": <String, dynamic>{"type": "none", "request": null},
-        "acceptProxyProtocol": null
+        "acceptProxyProtocol": false
       };
       if (headerType == 'http') {
         streamSetting['tcpSettings']['header']['type'] = 'http';
         if (host != "" || path != "") {
+          List<String> hostList = [];
+          if (host != null && host.isNotEmpty) {
+            hostList = host.split(",").map((e) => e.trim()).toList();
+          }
+
           streamSetting['tcpSettings']['header']['request'] = {
-            "path": path == null ? ["/"] : path.split(","),
-            "headers": {
-              "Host": host == null ? "" : host.split(","),
-              "User-Agent": [
-                "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/53.0.2785.143 Safari/537.36",
-                "Mozilla/5.0 (iPhone; CPU iPhone OS 10_0_2 like Mac OS X) AppleWebKit/601.1 (KHTML, like Gecko) CriOS/53.0.2785.109 Mobile/14A456 Safari/601.1.46",
-              ],
-              "Accept-Encoding": [
-                "gzip, deflate",
-              ],
-              "Connection": [
-                "keep-alive",
-              ],
-              "Pragma": "no-cache",
-            },
             "version": "1.1",
             "method": "GET",
+            "path": path == null
+                ? ["/"]
+                : path.split(",").map((e) => e.trim()).toList(),
+            "headers": {
+              "Host": hostList,
+              "User-Agent": [
+                "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/53.0.2785.143 Safari/537.36",
+                "Mozilla/5.0 (iPhone; CPU iPhone OS 10_0_2 like Mac OS X) AppleWebKit/601.1 (KHTML, like Gecko) CriOS/53.0.2785.109 Mobile/14A456 Safari/601.1.46"
+              ],
+              "Accept-Encoding": ["gzip, deflate"],
+              "Connection": ["keep-alive"],
+              "Pragma": "no-cache"
+            }
           };
-          sni = streamSetting['tcpSettings']['header']['request']['headers']
-                          ['Host']
-                      .length >
-                  0
-              ? streamSetting['tcpSettings']['header']['request']['headers']
-                  ['Host'][0]
-              : sni;
+
+          // Set SNI from host if available
+          sni = hostList.isNotEmpty ? hostList[0] : sni;
         }
       } else {
         streamSetting['tcpSettings']['header']['type'] = 'none';
-        sni = host != "" ? host ?? '' : '';
+        sni = host != null && host.isNotEmpty ? host : '';
       }
+    } else if (transport == 'http' || transport == 'h2') {
+      streamSetting['network'] = 'http';
+      streamSetting['httpSettings'] = {
+        "path": path == null ? "/" : path,
+        "host": host?.split(",").map((e) => e.trim()).toList() ?? [],
+        "method": "GET",
+        "headers": {}
+      };
+      if (host != null && host.isNotEmpty) {
+        List<String> hosts = host.split(",").map((e) => e.trim()).toList();
+        sni = hosts[0];
+      }
+    } else if (transport == 'ws') {
+      streamSetting['wsSettings'] = {
+        "path": path ?? "/",
+        "headers": {"Host": host ?? ""},
+        "maxEarlyData": null,
+        "useBrowserForwarding": null,
+        "acceptProxyProtocol": false
+      };
+      sni = host ?? "";
     } else if (transport == 'kcp') {
       streamSetting['kcpSettings'] = {
         "mtu": 1350,
@@ -323,39 +343,19 @@ abstract class V2RayURL {
         "congestion": false,
         "readBufferSize": 1,
         "writeBufferSize": 1,
-        "header": {
-          "type": headerType ?? "none",
-        },
-        "seed": (seed == null || seed == '') ? null : seed,
+        "header": {"type": headerType ?? "none"},
+        "seed": (seed == null || seed == '') ? null : seed
       };
-    } else if (transport == 'ws') {
-      streamSetting['wsSettings'] = {
-        "path": path ?? ['/'],
-        "headers": {"Host": host ?? ""},
-        "maxEarlyData": null,
-        "useBrowserForwarding": null,
-        "acceptProxyProtocol": null,
-      };
-      sni = streamSetting['wsSettings']['headers']['Host'];
-    } else if (transport == 'h2' || transport == 'http') {
-      streamSetting['network'] = 'h2';
-      streamSetting['h2Setting'] = {
-        "host": host?.split(",") ?? "",
-        "path": path ?? ['/'],
-      };
-      sni = streamSetting['h2Setting']['host'].length > 0
-          ? streamSetting['h2Setting']['host'][0]
-          : sni;
     } else if (transport == 'quic') {
       streamSetting['quicSettings'] = {
         "security": quicSecurity ?? 'none',
         "key": key ?? '',
-        "header": {"type": headerType ?? "none"},
+        "header": {"type": headerType ?? "none"}
       };
     } else if (transport == 'grpc') {
       streamSetting['grpcSettings'] = {
         "serviceName": serviceName ?? "",
-        "multiMode": mode == "multi",
+        "multiMode": mode == "multi"
       };
       sni = host ?? "";
     }

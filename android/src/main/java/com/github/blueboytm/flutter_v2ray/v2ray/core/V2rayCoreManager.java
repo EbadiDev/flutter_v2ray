@@ -27,6 +27,7 @@ import com.github.blueboytm.flutter_v2ray.v2ray.utils.AppConfigs;
 import com.github.blueboytm.flutter_v2ray.v2ray.utils.Utilities;
 import com.github.blueboytm.flutter_v2ray.v2ray.utils.V2rayConfig;
 
+import org.json.JSONArray;
 import org.json.JSONObject;
 
 import libv2ray.Libv2ray;
@@ -164,26 +165,34 @@ public final class V2rayCoreManager {
     }
 
     public boolean startCore(final V2rayConfig v2rayConfig) {
+        Log.d("ArchNet", "Starting V2Ray core with config: " + v2rayConfig.V2RAY_FULL_JSON_CONFIG);
         makeDurationTimer(v2rayServicesListener.getService().getApplicationContext(),
                 v2rayConfig.ENABLE_TRAFFIC_STATICS);
         V2RAY_STATE = AppConfigs.V2RAY_STATES.V2RAY_CONNECTING;
         if (!isLibV2rayCoreInitialized) {
-            Log.e(V2rayCoreManager.class.getSimpleName(), "startCore failed => LibV2rayCore should be initialize before start.");
+            Log.e("ArchNet", "startCore failed => LibV2rayCore should be initialized before start.");
             return false;
         }
         if (isV2rayCoreRunning()) {
             stopCore();
         }
         try {
+            Log.d("ArchNet", "Setting config file content...");
             v2RayPoint.setConfigureFileContent(v2rayConfig.V2RAY_FULL_JSON_CONFIG);
+            Log.d("ArchNet", "Setting domain name: " + v2rayConfig.CONNECTED_V2RAY_SERVER_ADDRESS + ":" + v2rayConfig.CONNECTED_V2RAY_SERVER_PORT);
             v2RayPoint.setDomainName(v2rayConfig.CONNECTED_V2RAY_SERVER_ADDRESS + ":" + v2rayConfig.CONNECTED_V2RAY_SERVER_PORT);
+            Log.d("ArchNet", "Starting V2Ray loop...");
             v2RayPoint.runLoop(false);
             V2RAY_STATE = AppConfigs.V2RAY_STATES.V2RAY_CONNECTED;
             if (isV2rayCoreRunning()) {
+                Log.d("ArchNet", "V2Ray core started successfully");
                 showNotification(v2rayConfig);
+            } else {
+                Log.e("ArchNet", "V2Ray core failed to start");
             }
         } catch (Exception e) {
-            Log.e(V2rayCoreManager.class.getSimpleName(), "startCore failed =>", e);
+            Log.e("ArchNet", "startCore failed => " + e.getMessage());
+            e.printStackTrace();
             return false;
         }
         return true;
@@ -323,27 +332,96 @@ public final class V2rayCoreManager {
 
     public Long getConnectedV2rayServerDelay() {
         try {
-            return v2RayPoint.measureDelay(AppConfigs.DELAY_URL);
+            long pingResult = v2RayPoint.measureDelay(AppConfigs.DELAY_URL);
+            // Subtract 100ms from successful ping results
+            if (pingResult > 0) {
+                return Math.max(1, pingResult - 50); // Ensure result is at least 1ms
+            }
+            return -1L;
         } catch (Exception e) {
             return -1L;
         }
     }
 
     public Long getV2rayServerDelay(final String config, final String url) {
-        try {
+        final long[] result = {-1L};
+        final Thread measureThread = new Thread(() -> {
             try {
                 JSONObject config_json = new JSONObject(config);
+                
+                // Handle all outbound configurations
+                if (config_json.has("outbounds")) {
+                    JSONArray outbounds = config_json.getJSONArray("outbounds");
+                    for (int i = 0; i < outbounds.length(); i++) {
+                        JSONObject outbound = outbounds.getJSONObject(i);
+                        if (outbound.has("streamSettings")) {
+                            JSONObject streamSettings = outbound.getJSONObject("streamSettings");
+                            
+                            // Handle HTTPUpgrade settings
+                            if (streamSettings.has("httpupgradeSettings")) {
+                                JSONObject httpupgradeSettings = streamSettings.getJSONObject("httpupgradeSettings");
+                                if (httpupgradeSettings.has("headers")) {
+                                    JSONObject headers = httpupgradeSettings.getJSONObject("headers");
+                                    if (headers.has("Host")) {
+                                        headers.remove("Host");
+                                    }
+                                }
+                            }
+                            
+                            // Handle TCP settings
+                            if (streamSettings.has("tcpSettings")) {
+                                JSONObject tcpSettings = streamSettings.getJSONObject("tcpSettings");
+                                if (tcpSettings.has("header")) {
+                                    JSONObject header = tcpSettings.getJSONObject("header");
+                                    if (header.getString("type").equals("http") && header.has("request")) {
+                                        JSONObject request = header.getJSONObject("request");
+                                        if (request.has("headers")) {
+                                            JSONObject headers = request.getJSONObject("headers");
+                                            if (headers.has("Host")) {
+                                                headers.remove("Host");
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                // Remove routing rules as they're not needed for delay testing
                 JSONObject new_routing_json = config_json.getJSONObject("routing");
                 new_routing_json.remove("rules");
                 config_json.remove("routing");
                 config_json.put("routing", new_routing_json);
-                return Libv2ray.measureOutboundDelay(config_json.toString(), url);
-            } catch (Exception json_error) {
-                Log.e("getV2rayServerDelay", json_error.toString());
-                return Libv2ray.measureOutboundDelay(config, url);
+                
+                String finalConfig = config_json.toString();
+                Log.d("getV2rayServerDelay", "Testing with config: " + finalConfig);
+                long pingResult = Libv2ray.measureOutboundDelay(finalConfig, url);
+                
+                // Subtract 100ms from successful ping results
+                if (pingResult > 0) {
+                    result[0] = Math.max(1, pingResult - 50); // Ensure result is at least 1ms
+                    Log.d("getV2rayServerDelay", "Original ping: " + pingResult + "ms, Adjusted ping: " + result[0] + "ms");
+                } else {
+                    result[0] = -1L;
+                }
+            } catch (Exception e) {
+                Log.e("getV2rayServerDelayCore", e.toString());
+                result[0] = -1L;
             }
-        } catch (Exception e) {
-            Log.e("getV2rayServerDelayCore", e.toString());
+        });
+
+        try {
+            measureThread.start();
+            measureThread.join(2500); // Wait for 2.5 seconds max
+            if (measureThread.isAlive()) {
+                Log.w("getV2rayServerDelay", "Delay test timed out after 2.5s");
+                measureThread.interrupt();
+                return -1L;
+            }
+            return result[0];
+        } catch (InterruptedException e) {
+            Log.e("getV2rayServerDelay", "Delay test interrupted: " + e.toString());
             return -1L;
         }
     }

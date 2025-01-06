@@ -79,22 +79,35 @@ class FlutterV2ray {
     String? notificationTitle,
   }) async {
     try {
+      print('📦 Starting V2Ray with raw config: $config');
+
       if (jsonDecode(config) == null) {
         throw ArgumentError('The provided string is not valid JSON');
       }
-    } catch (_) {
-      throw ArgumentError('The provided string is not valid JSON');
-    }
 
-    await FlutterV2rayPlatform.instance.startV2Ray(
-      remark: remark,
-      config: config,
-      blockedApps: blockedApps,
-      proxyOnly: proxyOnly,
-      bypassSubnets: bypassSubnets,
-      notificationDisconnectButtonName: notificationDisconnectButtonName,
-      notificationTitle: notificationTitle ?? remark,
-    );
+      // Log the configuration details
+      Map<String, dynamic> configMap = jsonDecode(config);
+      print('🔍 Outbound protocol: ${configMap['outbounds']?[0]?['protocol']}');
+      print(
+          '🔍 Network type: ${configMap['outbounds']?[0]?['streamSettings']?['network']}');
+      print(
+          '🔍 Routing rules count: ${configMap['routing']?['rules']?.length ?? 0}');
+      print('🔍 DNS servers: ${configMap['dns']?['servers']}');
+
+      await FlutterV2rayPlatform.instance.startV2Ray(
+        remark: remark,
+        config: config,
+        blockedApps: blockedApps,
+        proxyOnly: proxyOnly,
+        bypassSubnets: bypassSubnets,
+        notificationDisconnectButtonName: notificationDisconnectButtonName,
+        notificationTitle: notificationTitle ?? remark,
+      );
+      print('✅ V2Ray service start command sent');
+    } catch (e) {
+      print('❌ Error starting V2Ray: $e');
+      throw ArgumentError('Failed to start V2Ray: $e');
+    }
   }
 
   Future<dynamic> getAllServerDelay({required List<String> configs}) async {
@@ -103,31 +116,9 @@ class FlutterV2ray {
 
       for (String config in configs) {
         Map<String, dynamic> configMap = jsonDecode(config);
-
-        // Simplify DNS configuration
-        if (configMap.containsKey('dns')) {
-          configMap['dns'] = {
-            "servers": ["8.8.8.8", "8.8.4.4"],
-            "queryStrategy": "UseIPv4"
-          };
-        }
-
-        // Simplify routing configuration
-        if (configMap.containsKey('routing')) {
-          configMap['routing'] = {
-            "domainStrategy": "AsIs",
-            "rules": [
-              {
-                "type": "field",
-                "outboundTag": configMap['remarks'] ?? "proxy",
-                "port": "0-65535",
-                "enabled": true
-              }
-            ]
-          };
-        }
-
-        modifiedConfigs.add(jsonEncode(configMap));
+        final parsedConfig =
+            parseCompleteConfig(configMap, isDelayTesting: true);
+        modifiedConfigs.add(jsonEncode(parsedConfig));
       }
 
       return await FlutterV2rayPlatform.instance
@@ -150,31 +141,9 @@ class FlutterV2ray {
 
       for (String config in configs) {
         Map<String, dynamic> configMap = jsonDecode(config);
-
-        // Simplify DNS configuration
-        if (configMap.containsKey('dns')) {
-          configMap['dns'] = {
-            "servers": ["8.8.8.8", "8.8.4.4"],
-            "queryStrategy": "UseIPv4"
-          };
-        }
-
-        // Simplify routing configuration
-        if (configMap.containsKey('routing')) {
-          configMap['routing'] = {
-            "domainStrategy": "AsIs",
-            "rules": [
-              {
-                "type": "field",
-                "outboundTag": configMap['remarks'] ?? "proxy",
-                "port": "0-65535",
-                "enabled": true
-              }
-            ]
-          };
-        }
-
-        modifiedConfigs.add(jsonEncode(configMap));
+        final parsedConfig =
+            parseCompleteConfig(configMap, isDelayTesting: true);
+        modifiedConfigs.add(jsonEncode(parsedConfig));
       }
 
       return await FlutterV2rayPlatform.instance.getAllServerPing(
@@ -198,31 +167,8 @@ class FlutterV2ray {
       String url = 'https://google.com/generate_204'}) async {
     try {
       Map<String, dynamic> configMap = jsonDecode(config);
-
-      // Simplify DNS configuration
-      if (configMap.containsKey('dns')) {
-        configMap['dns'] = {
-          "servers": ["8.8.8.8", "8.8.4.4"],
-          "queryStrategy": "UseIPv4"
-        };
-      }
-
-      // Simplify routing configuration
-      if (configMap.containsKey('routing')) {
-        configMap['routing'] = {
-          "domainStrategy": "AsIs",
-          "rules": [
-            {
-              "type": "field",
-              "outboundTag": configMap['remarks'] ?? "proxy",
-              "port": "0-65535",
-              "enabled": true
-            }
-          ]
-        };
-      }
-
-      String modifiedConfig = jsonEncode(configMap);
+      final parsedConfig = parseCompleteConfig(configMap, isDelayTesting: true);
+      String modifiedConfig = jsonEncode(parsedConfig);
 
       return await FlutterV2rayPlatform.instance
           .getServerDelay(config: modifiedConfig, url: url);
@@ -271,5 +217,185 @@ class FlutterV2ray {
       default:
         throw ArgumentError('url is invalid');
     }
+  }
+
+  /// Parse a complete V2Ray configuration
+  ///
+  /// This method accepts a complete V2Ray configuration as a Map
+  /// and returns a validated and normalized configuration that can be used directly.
+  /// The input should be a complete V2Ray configuration containing:
+  /// remarks, log, stats, api, dns, policy, inbounds, outbounds, routing, observatory
+  static Map<String, dynamic> parseCompleteConfig(Map<String, dynamic> config,
+      {bool isDelayTesting = false}) {
+    print(
+        '🔄 Parsing ${isDelayTesting ? "delay testing" : "full"} configuration');
+
+    // Validate required fields
+    if (!config.containsKey('outbounds') || config['outbounds'].isEmpty) {
+      print('❌ No outbounds found in configuration');
+      throw ArgumentError('Configuration must contain at least one outbound');
+    }
+
+    // Don't modify the original config
+    Map<String, dynamic> finalConfig = Map.from(config);
+    print('📝 Original config remarks: ${finalConfig['remarks']}');
+
+    // Ensure remarks is present
+    if (!finalConfig.containsKey('remarks')) {
+      finalConfig['remarks'] = finalConfig['outbounds'][0]['tag'] ?? 'proxy';
+      print('ℹ️ Using default remarks: ${finalConfig['remarks']}');
+    }
+
+    // Ensure log configuration
+    if (!finalConfig.containsKey('log')) {
+      finalConfig['log'] = {
+        "access": "",
+        "error": "",
+        "loglevel": "debug",
+        "dnsLog": false
+      };
+    }
+
+    // For delay testing, use simplified DNS config
+    if (isDelayTesting) {
+      finalConfig['dns'] = {
+        "servers": ["8.8.8.8", "8.8.4.4"],
+        "queryStrategy": "UseIPv4"
+      };
+      print('🔄 Using simplified DNS for delay testing');
+    } else if (!finalConfig.containsKey('dns')) {
+      finalConfig['dns'] = {
+        "servers": ["1.1.1.1", "1.0.0.1", "8.8.8.8", "8.8.4.4"],
+        "queryStrategy": "UseIPv4"
+      };
+      print('ℹ️ Added default DNS configuration');
+    }
+
+    // For delay testing, we don't need stats and api
+    if (!isDelayTesting) {
+      // Ensure stats and api configuration for traffic monitoring
+      if (!finalConfig.containsKey('stats')) {
+        finalConfig['stats'] = {};
+      }
+      if (!finalConfig.containsKey('api')) {
+        finalConfig['api'] = {
+          "tag": "api",
+          "services": ["StatsService"]
+        };
+      }
+
+      // Ensure policy configuration
+      if (!finalConfig.containsKey('policy')) {
+        finalConfig['policy'] = {
+          "system": {"statsOutboundDownlink": true, "statsOutboundUplink": true}
+        };
+      }
+    } else {
+      // Remove stats and policy for delay testing
+      finalConfig.remove('stats');
+      finalConfig.remove('policy');
+    }
+
+    // Ensure inbounds configuration
+    if (!finalConfig.containsKey('inbounds')) {
+      finalConfig['inbounds'] = [
+        {
+          "tag": "socks",
+          "port": 10808,
+          "listen": "127.0.0.1",
+          "protocol": "socks",
+          "sniffing": {
+            "enabled": true,
+            "destOverride": ["http", "tls"],
+            "routeOnly": false
+          },
+          "settings": {"auth": "noauth", "udp": true, "allowTransparent": false}
+        },
+        {
+          "tag": "http",
+          "port": 10809,
+          "listen": "127.0.0.1",
+          "protocol": "http",
+          "sniffing": {
+            "enabled": true,
+            "destOverride": ["http", "tls"],
+            "routeOnly": false
+          },
+          "settings": {"auth": "noauth", "udp": true, "allowTransparent": false}
+        }
+      ];
+    }
+
+    // Handle routing configuration
+    if (isDelayTesting) {
+      print('🔄 Configuring for delay testing');
+      finalConfig['routing'] = {
+        "domainStrategy": "AsIs",
+        "domainMatcher": "hybrid"
+      };
+    } else {
+      print('🔄 Processing routing configuration');
+      String mainOutboundTag = finalConfig['outbounds'][0]['tag'];
+
+      // Create routing configuration with balancers
+      finalConfig['routing'] = {
+        "domainMatcher": "hybrid",
+        "domainStrategy": "IPIfNonMatch",
+        "rules": [
+          {
+            "type": "field",
+            "network": "tcp,udp",
+            "balancerTag": "balancer_leastPing",
+            "enabled": true
+          },
+          {
+            "type": "field",
+            "inboundTag": ["api"],
+            "outboundTag": "api",
+            "enabled": true
+          },
+          {
+            "type": "field",
+            "domain": ["geosite:ir"],
+            "outboundTag": "direct",
+            "enabled": true
+          },
+          {
+            "type": "field",
+            "ip": ["geoip:ir"],
+            "outboundTag": "direct",
+            "enabled": true
+          }
+        ],
+        "balancers": [
+          {
+            "tag": "balancer_leastPing",
+            "selector": [mainOutboundTag],
+            "strategy": {"type": "leastPing"}
+          },
+          {
+            "tag": "balancer_leastLoad",
+            "fallbackTag": "balancer_leastPing",
+            "selector": [mainOutboundTag],
+            "strategy": {"type": "leastLoad"}
+          }
+        ]
+      };
+      print('✅ Routing configuration updated with balancers');
+    }
+
+    // Add observatory if not present
+    if (!finalConfig.containsKey('observatory')) {
+      String mainOutboundTag = finalConfig['outbounds'][0]['tag'];
+      finalConfig['observatory'] = {
+        "subjectSelector": [mainOutboundTag],
+        "probeUrl": "http://cp.cloudflare.com/",
+        "probeInterval": "10s",
+        "enableConcurrency": true
+      };
+    }
+
+    print('✅ Configuration parsing completed');
+    return finalConfig;
   }
 }

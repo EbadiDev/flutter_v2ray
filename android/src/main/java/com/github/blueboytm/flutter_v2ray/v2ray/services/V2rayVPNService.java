@@ -95,8 +95,8 @@ public class V2rayVPNService extends VpnService implements V2rayServicesListener
         }
         Builder builder = new Builder();
         builder.setSession(v2rayConfig.REMARK);
-        builder.setMtu(1500);
-        builder.addAddress("26.26.26.1", 30);
+        builder.setMtu(1450);
+        builder.addAddress("10.10.10.2", 30);
 
         if (v2rayConfig.BYPASS_SUBNETS == null || v2rayConfig.BYPASS_SUBNETS.isEmpty()) {
             builder.addRoute("0.0.0.0", 0);
@@ -161,10 +161,10 @@ public class V2rayVPNService extends VpnService implements V2rayServicesListener
 
     private void runTun2socks() {
         ArrayList<String> cmd = new ArrayList<>(Arrays.asList(new File(getApplicationInfo().nativeLibraryDir, "libtun2socks.so").getAbsolutePath(),
-                "--netif-ipaddr", "26.26.26.2",
+                "--netif-ipaddr", "10.10.10.2",
                 "--netif-netmask", "255.255.255.252",
                 "--socks-server-addr", "127.0.0.1:" + v2rayConfig.LOCAL_SOCKS5_PORT,
-                "--tunmtu", "1500",
+                "--tunmtu", "1450",
                 "--sock-path", "sock_path",
                 "--enable-udprelay",
                 "--loglevel", "error"));
