@@ -162,17 +162,36 @@ class FlutterV2ray {
   }
 
   /// This method returns the real server delay of the configuration.
-  Future<int> getServerDelay(
-      {required String config,
-      String url = 'https://google.com/generate_204'}) async {
+  Future<int> getServerDelay({
+    required String config,
+    String url = 'https://google.com/generate_204',
+    bool isCancelled = false,
+  }) async {
+    if (isCancelled) {
+      throw CancellationException();
+    }
+
     try {
       Map<String, dynamic> configMap = jsonDecode(config);
       final parsedConfig = parseCompleteConfig(configMap, isDelayTesting: true);
       String modifiedConfig = jsonEncode(parsedConfig);
 
-      return await FlutterV2rayPlatform.instance
+      if (isCancelled) {
+        throw CancellationException();
+      }
+
+      final result = await FlutterV2rayPlatform.instance
           .getServerDelay(config: modifiedConfig, url: url);
+
+      if (isCancelled) {
+        throw CancellationException();
+      }
+
+      return result;
     } catch (e) {
+      if (e is CancellationException) {
+        rethrow;
+      }
       print('Error in getServerDelay: $e');
       throw ArgumentError('Error processing configuration: $e');
     }
@@ -398,4 +417,9 @@ class FlutterV2ray {
     print('✅ Configuration parsing completed');
     return finalConfig;
   }
+}
+
+class CancellationException implements Exception {
+  @override
+  String toString() => 'Operation was cancelled';
 }

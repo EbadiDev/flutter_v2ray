@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'model/v2ray_status.dart' show V2RayStatus;
+import 'package:flutter_v2ray/flutter_v2ray.dart';
 
 import 'flutter_v2ray_platform_interface.dart';
 
@@ -66,12 +67,25 @@ class MethodChannelFlutterV2ray extends FlutterV2rayPlatform {
   }
 
   @override
-  Future<int> getServerDelay(
-      {required String config, required String url}) async {
-    return await methodChannel.invokeMethod('getServerDelay', {
+  Future<int> getServerDelay({
+    required String config,
+    required String url,
+    bool isCancelled = false,
+  }) async {
+    if (isCancelled) {
+      throw CancellationException();
+    }
+
+    final result = await methodChannel.invokeMethod('getServerDelay', {
       "config": config,
       "url": url,
     });
+
+    if (isCancelled) {
+      throw CancellationException();
+    }
+
+    return result;
   }
 
   @override

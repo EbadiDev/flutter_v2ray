@@ -333,7 +333,7 @@ public final class V2rayCoreManager {
     public Long getConnectedV2rayServerDelay() {
         try {
             long pingResult = v2RayPoint.measureDelay(AppConfigs.DELAY_URL);
-            // Subtract 100ms from successful ping results
+            // Subtract 50ms from successful ping results
             if (pingResult > 0) {
                 return Math.max(1, pingResult - 50); // Ensure result is at least 1ms
             }
@@ -398,7 +398,7 @@ public final class V2rayCoreManager {
                 Log.d("getV2rayServerDelay", "Testing with config: " + finalConfig);
                 long pingResult = Libv2ray.measureOutboundDelay(finalConfig, url);
                 
-                // Subtract 100ms from successful ping results
+                // Subtract 50ms from successful ping results
                 if (pingResult > 0) {
                     result[0] = Math.max(1, pingResult - 50); // Ensure result is at least 1ms
                     Log.d("getV2rayServerDelay", "Original ping: " + pingResult + "ms, Adjusted ping: " + result[0] + "ms");

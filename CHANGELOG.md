@@ -4,6 +4,7 @@
 * add 2.5s timeout for delay tests
 * improve delay calculation by subtracting 50ms from results
 * fix shadowsocks DNS resolution issues
+* add support for cancelling delay tests
 
 ## 1.0.10
 
