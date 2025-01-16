@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:logging/logging.dart';
 
 import 'package:flutter_v2ray/url/shadowsocks.dart';
 import 'package:flutter_v2ray/url/socks.dart';
@@ -13,6 +14,8 @@ import 'model/v2ray_status.dart';
 
 export 'model/v2ray_status.dart';
 export 'url/url.dart';
+
+final _logger = Logger('FlutterV2ray');
 
 class FlutterV2ray {
   FlutterV2ray({required this.onStatusChanged});
@@ -79,20 +82,20 @@ class FlutterV2ray {
     String? notificationTitle,
   }) async {
     try {
-      print('📦 Starting V2Ray with raw config: $config');
+      _logger.info('Starting V2Ray with raw config: $config');
 
       if (jsonDecode(config) == null) {
         throw ArgumentError('The provided string is not valid JSON');
       }
 
-      // Log the configuration details
       Map<String, dynamic> configMap = jsonDecode(config);
-      print('🔍 Outbound protocol: ${configMap['outbounds']?[0]?['protocol']}');
-      print(
-          '🔍 Network type: ${configMap['outbounds']?[0]?['streamSettings']?['network']}');
-      print(
-          '🔍 Routing rules count: ${configMap['routing']?['rules']?.length ?? 0}');
-      print('🔍 DNS servers: ${configMap['dns']?['servers']}');
+      _logger.info(
+          'Outbound protocol: ${configMap['outbounds']?[0]?['protocol']}');
+      _logger.info(
+          'Network type: ${configMap['outbounds']?[0]?['streamSettings']?['network']}');
+      _logger.info(
+          'Routing rules count: ${configMap['routing']?['rules']?.length ?? 0}');
+      _logger.info('DNS servers: ${configMap['dns']?['servers']}');
 
       await FlutterV2rayPlatform.instance.startV2Ray(
         remark: remark,
@@ -103,9 +106,9 @@ class FlutterV2ray {
         notificationDisconnectButtonName: notificationDisconnectButtonName,
         notificationTitle: notificationTitle ?? remark,
       );
-      print('✅ V2Ray service start command sent');
+      _logger.info('V2Ray service start command sent');
     } catch (e) {
-      print('❌ Error starting V2Ray: $e');
+      _logger.severe('Error starting V2Ray: $e');
       throw ArgumentError('Failed to start V2Ray: $e');
     }
   }
@@ -164,7 +167,7 @@ class FlutterV2ray {
   /// This method returns the real server delay of the configuration.
   Future<int> getServerDelay({
     required String config,
-    String url = 'https://google.com/generate_204',
+    String url = 'http://google.com/generate_204',
     bool isCancelled = false,
   }) async {
     if (isCancelled) {
@@ -209,7 +212,7 @@ class FlutterV2ray {
 
   /// This method returns the connected server delay.
   Future<int> getConnectedServerDelay(
-      {String url = 'https://google.com/generate_204'}) async {
+      {String url = 'http://google.com/generate_204'}) async {
     return await FlutterV2rayPlatform.instance.getConnectedServerDelay(url);
   }
 
@@ -246,23 +249,23 @@ class FlutterV2ray {
   /// remarks, log, stats, api, dns, policy, inbounds, outbounds, routing, observatory
   static Map<String, dynamic> parseCompleteConfig(Map<String, dynamic> config,
       {bool isDelayTesting = false}) {
-    print(
-        '🔄 Parsing ${isDelayTesting ? "delay testing" : "full"} configuration');
+    _logger.info(
+        'Parsing ${isDelayTesting ? "delay testing" : "full"} configuration');
 
     // Validate required fields
     if (!config.containsKey('outbounds') || config['outbounds'].isEmpty) {
-      print('❌ No outbounds found in configuration');
+      _logger.severe('No outbounds found in configuration');
       throw ArgumentError('Configuration must contain at least one outbound');
     }
 
     // Don't modify the original config
     Map<String, dynamic> finalConfig = Map.from(config);
-    print('📝 Original config remarks: ${finalConfig['remarks']}');
+    _logger.info('Original config remarks: ${finalConfig['remarks']}');
 
     // Ensure remarks is present
     if (!finalConfig.containsKey('remarks')) {
       finalConfig['remarks'] = finalConfig['outbounds'][0]['tag'] ?? 'proxy';
-      print('ℹ️ Using default remarks: ${finalConfig['remarks']}');
+      _logger.info('Using default remarks: ${finalConfig['remarks']}');
     }
 
     // Ensure log configuration
@@ -281,13 +284,13 @@ class FlutterV2ray {
         "servers": ["8.8.8.8", "8.8.4.4"],
         "queryStrategy": "UseIPv4"
       };
-      print('🔄 Using simplified DNS for delay testing');
+      _logger.info('Using simplified DNS for delay testing');
     } else if (!finalConfig.containsKey('dns')) {
       finalConfig['dns'] = {
         "servers": ["1.1.1.1", "1.0.0.1", "8.8.8.8", "8.8.4.4"],
         "queryStrategy": "UseIPv4"
       };
-      print('ℹ️ Added default DNS configuration');
+      _logger.info('Added default DNS configuration');
     }
 
     // For delay testing, we don't need stats and api
@@ -347,13 +350,13 @@ class FlutterV2ray {
 
     // Handle routing configuration
     if (isDelayTesting) {
-      print('🔄 Configuring for delay testing');
+      _logger.info('Configuring for delay testing');
       finalConfig['routing'] = {
         "domainStrategy": "AsIs",
         "domainMatcher": "hybrid"
       };
     } else {
-      print('🔄 Processing routing configuration');
+      _logger.info('Processing routing configuration');
       String mainOutboundTag = finalConfig['outbounds'][0]['tag'];
 
       // Create routing configuration with balancers
@@ -400,7 +403,7 @@ class FlutterV2ray {
           }
         ]
       };
-      print('✅ Routing configuration updated with balancers');
+      _logger.info('Routing configuration updated with balancers');
     }
 
     // Add observatory if not present
@@ -414,8 +417,46 @@ class FlutterV2ray {
       };
     }
 
-    print('✅ Configuration parsing completed');
+    _logger.info('Configuration parsing completed');
     return finalConfig;
+  }
+
+  /// Get the SOCKS5 port from a V2Ray configuration
+  static int getSocksPort(String config) {
+    try {
+      Map<String, dynamic> configMap = jsonDecode(config);
+      if (configMap.containsKey('inbounds')) {
+        List<dynamic> inbounds = configMap['inbounds'];
+        for (var inbound in inbounds) {
+          if (inbound['protocol'] == 'socks') {
+            return inbound['port'] as int;
+          }
+        }
+      }
+      return 10808; // Default SOCKS5 port if not found
+    } catch (e) {
+      _logger.severe('Error getting SOCKS port: $e');
+      return 10808; // Default SOCKS5 port on error
+    }
+  }
+
+  /// Get the HTTP port from a V2Ray configuration
+  static int getHttpPort(String config) {
+    try {
+      Map<String, dynamic> configMap = jsonDecode(config);
+      if (configMap.containsKey('inbounds')) {
+        List<dynamic> inbounds = configMap['inbounds'];
+        for (var inbound in inbounds) {
+          if (inbound['protocol'] == 'http') {
+            return inbound['port'] as int;
+          }
+        }
+      }
+      return 10809; // Default HTTP port if not found
+    } catch (e) {
+      _logger.severe('Error getting HTTP port: $e');
+      return 10809; // Default HTTP port on error
+    }
   }
 }
 
