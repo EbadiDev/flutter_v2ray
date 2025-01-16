@@ -38,11 +38,23 @@ public class V2rayVPNService extends VpnService implements V2rayServicesListener
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        if (intent == null) {
+            // Service is being restarted after being killed
+            stopSelf();
+            return START_NOT_STICKY;
+        }
+
         AppConfigs.V2RAY_SERVICE_COMMANDS startCommand = (AppConfigs.V2RAY_SERVICE_COMMANDS) intent.getSerializableExtra("COMMAND");
+        if (startCommand == null) {
+            stopSelf();
+            return START_NOT_STICKY;
+        }
+
         if (startCommand.equals(AppConfigs.V2RAY_SERVICE_COMMANDS.START_SERVICE)) {
             v2rayConfig = (V2rayConfig) intent.getSerializableExtra("V2RAY_CONFIG");
             if (v2rayConfig == null) {
                 this.onDestroy();
+                return START_NOT_STICKY;
             }
             if (V2rayCoreManager.getInstance().isV2rayCoreRunning()) {
                 V2rayCoreManager.getInstance().stopCore();
